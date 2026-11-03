@@ -1,0 +1,53 @@
+name: PabloHFlix V2 preview Docker
+
+on:
+  push:
+    branches:
+      - test/pablohflix-ci-validation
+    paths:
+      - .github/workflows/pablohflix-preview-image.yml
+      - Dockerfile
+      - apps/nextjs/src/components/pablo-console/**
+      - apps/nextjs/src/app/[locale]/console/**
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: pablohflix-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-preview:
+    name: Build and publish isolated preview (amd64)
+    if: github.repository == 'Pabloohs/pablohflix-console'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Authenticate to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish amd64 preview
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/pabloohs/pablohflix-console:v2-preview
+            ghcr.io/pabloohs/pablohflix-console:v2-${{ github.sha }}
+          cache-from: type=gha,scope=pablohflix-v2
+          cache-to: type=gha,mode=max,scope=pablohflix-v2
+      - name: Publish image name
+        run: |
+          echo 'PabloHFlix preview: ghcr.io/pabloohs/pablohflix-console:v2-preview' >> "$GITHUB_STEP_SUMMARY"

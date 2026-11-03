@@ -1,0 +1,32 @@
+name: pablohflix-v2
+
+services:
+  console:
+    image: ghcr.io/pabloohs/pablohflix-console:v2-preview
+    container_name: pablohflix-v2
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      BASE_URL: http://192.168.1.200:3020
+      SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:?Set a unique 64-character hexadecimal key in a local .env file}
+      PUID: '1005'
+      PGID: '100'
+      HOMARR_DISABLE_IPV6: 'true'
+      ENABLE_DOCKER: 'false'
+    ports:
+      - '192.168.1.200:3020:7575'
+    volumes:
+      - pablohflix_v2_appdata:/appdata
+    networks:
+      - pablohflix_v2_private
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    mem_limit: 2g
+
+volumes:
+  pablohflix_v2_appdata:
+
+networks:
+  pablohflix_v2_private:
+    driver: bridge
