@@ -1,1 +1,0 @@
-ALTER TABLE `integrationSecret` MODIFY COLUMN `kind` varchar(64) NOT NULL;

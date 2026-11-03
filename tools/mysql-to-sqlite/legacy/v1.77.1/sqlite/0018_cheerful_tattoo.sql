@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX `search_engine_short_unique` ON `search_engine` (`short`);

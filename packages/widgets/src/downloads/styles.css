@@ -1,4 +1,0 @@
-/* Row expansion styling */
-.downloads-table .mantine-datatable-row-expansion-cell {
-  background-color: color-mix(in srgb, var(--mantine-color-body) 40%, transparent) !important;
-}

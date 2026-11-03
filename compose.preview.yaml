@@ -1,0 +1,39 @@
+# Exemple d'instance TEST sur UGOS Pro (ne remplace pas la V1 :3010 ni Homarr V2 :3020).
+# Déployer uniquement après avoir créé le dossier et les secrets indiqués dans README.
+name: pablohflix-native-preview
+services:
+  console:
+    build: .
+    container_name: pablohflix-native-preview
+    user: "1000:100" # Adapter à l'UID:GID du compte service existant
+    restart: unless-stopped
+    env_file:
+      - /volume1/docker/pablohflix-native-preview/.env
+    environment:
+      TZ: Europe/Paris
+      PORT: "3000"
+      DATA_DIR: /app/data
+      METRICS_DIR: /app/metrics
+    ports:
+      - "192.168.1.200:3030:3000"
+    volumes:
+      - /volume1/docker/pablohflix-native-preview/data:/app/data
+      - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+    networks:
+      - private_console
+      - media_services
+      - jellyfin_default
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 100
+    mem_limit: 256m
+networks:
+  private_console: {}
+  media_services:
+    external: true
+  jellyfin_default:
+    external: true

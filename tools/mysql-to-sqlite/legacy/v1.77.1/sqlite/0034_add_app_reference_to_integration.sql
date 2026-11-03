@@ -1,1 +1,0 @@
-ALTER TABLE `integration` ADD `app_id` text REFERENCES app(id);

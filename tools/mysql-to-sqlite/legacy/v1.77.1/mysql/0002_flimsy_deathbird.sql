@@ -1,1 +1,0 @@
-ALTER TABLE `item` ADD `advanced_options` text DEFAULT ('{"json": {}}') NOT NULL;

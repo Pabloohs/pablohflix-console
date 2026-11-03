@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `provider` text DEFAULT 'credentials' NOT NULL;

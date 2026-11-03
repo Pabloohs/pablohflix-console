@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `open_search_in_new_tab` boolean DEFAULT false NOT NULL;

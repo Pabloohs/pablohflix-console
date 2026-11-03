@@ -1,1 +1,0 @@
-ALTER TABLE `user` MODIFY COLUMN `colorScheme` varchar(5) NOT NULL DEFAULT 'dark';

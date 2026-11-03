@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `provider` varchar(64) DEFAULT 'credentials' NOT NULL;

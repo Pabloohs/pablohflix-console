@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `ddg_bangs` integer DEFAULT true NOT NULL;

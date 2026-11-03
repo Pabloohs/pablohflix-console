@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { once } from 'node:events';
+process.env.NODE_ENV='test';
+process.env.DASHBOARD_USER='admin';
+process.env.DASHBOARD_PASSWORD='test-password-is-long-enough';
+process.env.DASHBOARD_SESSION_SECRET='test-secret-012345678901234567890123456789';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pablo-test-'));
+process.env.METRICS_DIR=dir;
+const {server,collectSnapshot,safeEqual,decodeXml}=await import('../server.mjs');
+
+test('comparaison protégée et nettoyage XML',()=>{
+  assert.equal(safeEqual('abcdef','abcdef'),true);
+  assert.equal(safeEqual('abcdef','abcdefg'),false);
+  assert.equal(decodeXml('<![CDATA[Bonjour]]> &amp; &lt;OK&gt;'), 'Bonjour & <OK>');
+});
+
+test('collecteur : inconnu si aucun fichier, valeurs réelles si inventaire disponible',()=>{
+  assert.equal(collectSnapshot().docker.ok,false);
+  fs.writeFileSync(path.join(dir,'updated_at'),new Date().toISOString());
+  fs.writeFileSync(path.join(dir,'docker.psv'),'jellyfin|running|Up 2 days (healthy)\nold|exited|Exited (0)\n');
+  fs.writeFileSync(path.join(dir,'volumes.df'),'Filesystem 1024-blocks Used Available Capacity Mounted on\n/dev/a 1000 300 700 30% /volume1\n/dev/b 2000 500 1500 25% /volume2\n');
+  fs.writeFileSync(path.join(dir,'disks.psv'),'sda|EXOS|6T|PASSED|38\nsdb|EXOS|6T|UNKNOWN|\n');
+  const data=collectSnapshot();
+  assert.deepEqual([data.docker.total,data.docker.up,data.docker.down],[2,1,1]);
+  assert.equal(data.volumes.volume2.freePercent,75);
+  assert.equal(data.disks[1].health,'UNKNOWN');
+});
+
+test('authentification, session et API sécurisées',async()=>{
+  server.listen(0,'127.0.0.1');await once(server,'listening');
+  const base=`http://127.0.0.1:${server.address().port}`;
+  try{
+    let r=await fetch(base+'/api/status');assert.equal(r.status,401);
+    r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'incorrect'})});assert.equal(r.status,401);
+    r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:process.env.DASHBOARD_PASSWORD})});assert.equal(r.status,200);
+    const sess=r.headers.get('set-cookie').split(';')[0];assert.ok(sess.includes('pablo_session='));
+    r=await fetch(base+'/api/status',{headers:{cookie:sess}});assert.equal(r.status,200);
+    const data=await r.json();assert.equal(data.docker.total,2);assert.equal(data.jellyfin.ok,false);
+    r=await fetch(base+'/api/logout',{method:'POST',headers:{cookie:sess}});assert.equal(r.status,200);
+    r=await fetch(base+'/api/status',{headers:{cookie:sess}});assert.equal(r.status,401);
+  }finally{server.close();}
+});

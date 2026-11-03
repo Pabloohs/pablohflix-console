@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `pingIconsEnabled` integer DEFAULT false NOT NULL;

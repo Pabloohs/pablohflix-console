@@ -1,9 +1,0 @@
-{
-  "recommendations": [
-    "dbaeumer.vscode-eslint",
-    "oxc.oxc-vscode",
-    "yoavbls.pretty-ts-errors",
-    "million.million-lint",
-    "lokalise.i18n-ally"
-  ]
-}

@@ -1,0 +1,57 @@
+# Projet UGOS Docker : nas-dashboard (correctif 0.1.1 / lecture directe du .env)
+# Ne modifie ni media-arr, ni recordstudio, ni les règles réseau existantes.
+services:
+  console:
+    image: node:22-bookworm-slim
+    container_name: pablohflix-console
+    # IMPORTANT : remplacer 1000:100 par UID:GID reels de svc_console.
+    # Les PABLO_UID/PABLO_GID du .env ne sont PAS utilises ici par interpolation UGOS.
+    user: "1000:100"
+    working_dir: /app
+    command: ["node", "server.mjs"]
+    restart: unless-stopped
+    # Chemin absolu : UGOS peut copier le Compose dans son repertoire de projets.
+    # A ne pas confondre avec l'interpolation ${VARIABLE} faite AVANT le demarrage.
+    env_file:
+      - /volume1/docker/nas-dashboard/.env
+    environment:
+      TZ: Europe/Paris
+      PORT: "3000"
+      METRICS_DIR: /app/metrics
+      JELLYFIN_URL: "http://jellyfin:8096"
+      RADARR_URL: "http://radarr:7878"
+      SONARR_URL: "http://sonarr:8989"
+      SEERR_URL: "http://seerr:5055"
+      VPN_RECORD_EXPECTED_COUNTRY: "CH"
+      NEWS_RSS_URL: "https://www.cert.ssi.gouv.fr/feed/"
+    ports:
+      - "192.168.1.200:3010:3000"
+    volumes:
+      - /volume1/docker/nas-dashboard/server.mjs:/app/server.mjs:ro
+      - /volume1/docker/nas-dashboard/public:/app/public:ro
+      - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+    networks:
+      - console_default
+      - media_services
+      - jellyfin_default
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m
+    pids_limit: 100
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 60s
+      timeout: 8s
+      retries: 3
+      start_period: 15s
+
+networks:
+  console_default: {}
+  media_services:
+    external: true
+  jellyfin_default:
+    external: true

@@ -1,0 +1,6 @@
+(()=>{'use strict';
+const grid=document.getElementById('custom-widgets');if(!grid)return;
+const cards=document.getElementById('custom-widget-grid');
+async function refresh(){try{const resp=await fetch('/api/widgets/data',{cache:'no-store'});if(resp.status===401)return;if(!resp.ok)throw Error('HTTP '+resp.status);const data=await resp.json();cards.replaceChildren();if(!data.items.length){grid.hidden=true;return;}grid.hidden=false;for(const item of data.items){const box=document.createElement('article');box.className='panel custom-widget';const h=document.createElement('h2');h.textContent='◇ '+item.title;const value=document.createElement('b');value.className='custom-widget-value';value.textContent=item.ok&&item.value!==null?String(item.value):'—';const foot=document.createElement('small');foot.className=item.ok?'muted':'bad-text';foot.textContent=item.ok?`${item.source} · API connectée`:`${item.source} · ${item.reason||'Indisponible'}`;box.append(h,value,foot);cards.append(box);}}catch{grid.hidden=true;}}
+refresh();setInterval(refresh,30000);
+})();
