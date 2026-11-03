@@ -49,4 +49,5 @@ jobs:
           cache-from: type=gha,scope=pablohflix-v2
           cache-to: type=gha,mode=max,scope=pablohflix-v2
       - name: Publish image name
-        run: echo 'PabloHFlix preview: ghcr.io/pabloohs/pablohflix-console:v2-preview' >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo 'PabloHFlix preview: ghcr.io/pabloohs/pablohflix-console:v2-preview' >> "$GITHUB_STEP_SUMMARY"
