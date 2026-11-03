@@ -39,7 +39,7 @@ Le fichier `compose.preview.yaml` est une proposition **de test**, port `3030`, 
 - Homarr V2 sur `3020` ;
 - la stack `media-arr`, Jellyfin et `recordstudio`.
 
-Copier les fichiers dans `/volume1/docker/pablohflix-native-preview`, créer `.env` à partir de `.env.example`, générer deux secrets forts distincts, créer le dossier `data` accessible par le compte UID du conteneur, puis créer le projet Docker via UGOS. Adapter les noms de réseaux partagés si nécessaire.
+Utiliser l’image `ghcr.io/pabloohs/pablohflix-console:native-preview` publiée par GitHub Actions. Créer `/volume1/docker/pablohflix-native-preview`, puis `.env` à partir de `.env.example`, générer deux secrets forts distincts, créer le dossier `data` accessible par le compte UID du conteneur, puis créer le projet Docker via UGOS. Adapter les noms de réseaux partagés si nécessaire.
 
 Les alias Docker internes (`http://jellyfin:8096`, `http://radarr:7878`, etc.) sont recommandés quand la console rejoint les réseaux correspondants, afin de **ne pas contourner le filtrage `UG_FORWARD`** par des règles globales. Vérifier les réseaux et leurs noms exacts avant déploiement. Pour les applications non sur un réseau partagé, autoriser uniquement les flux nécessaires dans les règles existantes.
 

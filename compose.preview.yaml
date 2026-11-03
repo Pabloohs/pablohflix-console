@@ -3,7 +3,7 @@
 name: pablohflix-native-preview
 services:
   console:
-    build: .
+    image: ghcr.io/pabloohs/pablohflix-console:native-preview
     container_name: pablohflix-native-preview
     user: "1000:100" # Adapter à l'UID:GID du compte service existant
     restart: unless-stopped
