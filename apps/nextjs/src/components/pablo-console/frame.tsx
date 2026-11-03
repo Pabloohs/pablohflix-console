@@ -47,7 +47,7 @@ export function PabloConsoleFrame({ children }: PropsWithChildren) {
           </div>
         </div>
         <nav className={styles.actions} aria-label="Navigation de la console">
-          <Link className={styles.navLink} href="/">Widgets</Link>
+          <Link className={styles.navLink} href="/manage/boards">Configurer les widgets</Link>
           <Link className={styles.navLink} href="/manage/integrations">Intégrations</Link>
           <Link className={styles.navLink} href="/manage">Administration</Link>
           <label className={styles.themeLabel}>
