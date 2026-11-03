@@ -63,3 +63,5 @@ La première version personnalise les widgets **indicateur de valeur** et les ap
 - `archive/pablohflix-homarr-v2-2026-11-03` : ancienne adaptation Homarr PabloHFlix V2.
 
 Ces deux branches d'archive sont conservées. Le projet V1 natif ne réutilise pas le runtime de Homarr.
+
+Les anciens fichiers de déploiement de la V1 sont conservés à titre historique sous `docs/legacy/` et `compose.v1-legacy.yaml`. **Ne pas les redéployer** pour tester la nouvelle interface.
