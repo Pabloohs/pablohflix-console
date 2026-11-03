@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {createIntegrationStore} from '../integrations.mjs';
+import {createIntegrationStore,jellyfinAuthHeaders} from '../integrations.mjs';
 
 const mk = () => fs.mkdtempSync(path.join(os.tmpdir(),'pablo-integrations-'));
 const secret = 'test-session-secret-is-at-least-32-characters-long';
@@ -53,4 +53,24 @@ test('Protection : URI distante, localhost et champs dangereux rejetés', async 
   assert.throws(()=>store.create({type:'custom',name:'Bad',url:'http://192.168.1.200:8000',endpoint:'/api/../admin',auth:'none'}),/Chemin API/);
   assert.throws(()=>store.create({type:'custom',name:'Bad',url:'http://192.168.1.200:8000',endpoint:'/api',field:'__proto__.x',auth:'none'}),/Chemin JSON/);
   fs.rmSync(dir,{recursive:true,force:true});
+});
+
+
+test('Jellyfin 12 : API key envoyée par Authorization MediaBrowser et non X-Emby-Token', async () => {
+  const dir=mk();
+  const requests=[];
+  const fetchImpl=async (url, options) => {
+    requests.push({url:String(url),headers:options.headers});
+    return {status:200,ok:true,text:async()=>JSON.stringify([{NowPlayingItem:{Id:'movie'}}])};
+  };
+  try {
+    assert.deepEqual(jellyfinAuthHeaders('example-jellyfin-key'),{Authorization:'MediaBrowser Token="example-jellyfin-key"'});
+    const store=createIntegrationStore({dir,secret,fetchImpl});
+    const item=store.create({type:'jellyfin',name:'Cinema',url:'http://192.168.1.200:8096',secret:'test-jellyfin-api-key-123456'});
+    const result=await store.test(item.id);
+    assert.equal(result.ok,true);
+    assert.equal(result.metric,1);
+    assert.equal(requests[0].headers.Authorization,'MediaBrowser Token="test-jellyfin-api-key-123456"');
+    assert.equal(requests[0].headers['X-Emby-Token'],undefined);
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });

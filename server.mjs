@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { createIntegrationStore, PRESETS } from './integrations.mjs';
+import { createIntegrationStore, PRESETS, jellyfinAuthHeaders } from './integrations.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || '3000');
@@ -116,7 +116,7 @@ const endpoint=(env,fallback)=>String(process.env[env]||fallback||'').replace(/\
 async function jellyfin(){
   const custom=store.getInternalForType('jellyfin');const url=custom?.url||endpoint('JELLYFIN_URL','http://jellyfin:8096');const key=custom?.apiKey||process.env.JELLYFIN_API_KEY;
   if(!key)return {ok:false,reason:'Clé API non configurée',streams:null,transcodes:null,users:null};
-  const sessions=await fetchJson(`${url}/Sessions`,{'X-Emby-Token':key});
+  const sessions=await fetchJson(`${url}/Sessions`,jellyfinAuthHeaders(key));
   const active=(Array.isArray(sessions)?sessions:[]).filter(s=>Boolean(s.NowPlayingItem));
   return {ok:true,streams:active.length,transcodes:active.filter(s=>Boolean(s.TranscodingInfo) || s.PlayState?.PlayMethod==='Transcode').length,users:new Set(active.map(s=>s.UserId).filter(Boolean)).size};
 }

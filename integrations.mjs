@@ -22,6 +22,13 @@ const MAX_JSON_BYTES = 1_000_000;
 const RESERVED_IPS = /^(?:0\.|127\.|169\.254\.|224\.|225\.|226\.|227\.|228\.|229\.|23[0-9]\.|24[0-9]\.|25[0-5]\.)/;
 const PRIVATE_IPS = /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.|100\.(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)/;
 
+// Jellyfin 12 disables the legacy X-Emby-Token header by default.
+export function jellyfinAuthHeaders(apiKey) {
+  if (typeof apiKey !== 'string' || !apiKey || /[\r\n"]/u.test(apiKey)) throw new Error('Clé API Jellyfin invalide');
+  return {Authorization: `MediaBrowser Token="${apiKey}"`};
+}
+
+
 function requireText(value, max, name) {
   if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`${name} invalide`);
   return value.trim();
@@ -157,7 +164,10 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
     await verifyDestination(url);
     const headers={'Accept':'application/json'};
     const secret=decrypt(item.encryptedSecret);
-    if(item.auth==='apiKey') headers[item.type==='jellyfin'?'X-Emby-Token':'X-Api-Key']=secret;
+    if(item.auth==='apiKey') {
+      if(item.type==='jellyfin') Object.assign(headers,jellyfinAuthHeaders(secret));
+      else headers['X-Api-Key']=secret;
+    }
     if(item.auth==='bearer')headers.Authorization=`Bearer ${secret}`;
     if(item.auth==='basic')headers.Authorization='Basic '+Buffer.from(`${item.username}:${secret}`).toString('base64');
     if(item.auth==='header')headers[item.headerName]=secret;
