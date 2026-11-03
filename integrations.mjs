@@ -22,7 +22,7 @@ const MAX_JSON_BYTES = 1_000_000;
 const RESERVED_IPS = /^(?:0\.|127\.|169\.254\.|224\.|225\.|226\.|227\.|228\.|229\.|23[0-9]\.|24[0-9]\.|25[0-5]\.)/;
 const PRIVATE_IPS = /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.|100\.(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)/;
 
-// Jellyfin 12 disables the legacy X-Emby-Token header by default.
+// Jellyfin 12 no longer accepts the legacy X-Emby-Token header by default.
 export function jellyfinAuthHeaders(apiKey) {
   if (typeof apiKey !== 'string' || !apiKey || /[\r\n"]/u.test(apiKey)) throw new Error('Clé API Jellyfin invalide');
   return {Authorization: `MediaBrowser Token="${apiKey}"`};
@@ -158,9 +158,10 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
     state.integrations=state.integrations.filter(x=>x.id!==id);
     state.widgets=state.widgets.filter(x=>x.integrationId!==id);save();
   }
-  async function query(id) {
+  async function queryData(id, endpointOverride='') {
     const item=state.integrations.find(x=>x.id===id);if(!item)throw new Error('Intégration inconnue');
-    const url=new URL(item.url+item.endpoint);
+    const endpoint=endpointOverride ? normalizePath(endpointOverride) : item.endpoint;
+    const url=new URL(item.url+endpoint);
     await verifyDestination(url);
     const headers={'Accept':'application/json'};
     const secret=decrypt(item.encryptedSecret);
@@ -176,6 +177,15 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
     if(!response.ok)throw new Error(`API HTTP ${response.status}`);
     const raw=await response.text();if(raw.length>MAX_JSON_BYTES)throw new Error('Réponse JSON trop volumineuse');
     return JSON.parse(raw);
+  }
+  async function query(id) { return queryData(id); }
+  function convertMetricValue(response,field,transform='value',type='') {
+    if(transform==='arrayLength')return Array.isArray(response)?response.length:null;
+    if(transform==='playingSessions')return Array.isArray(response)?response.filter(s=>s?.NowPlayingItem).length:null;
+    if(transform==='transcodes')return Array.isArray(response)?response.filter(s=>s?.NowPlayingItem&&(s.TranscodingInfo||s.PlayState?.PlayMethod==='Transcode')).length:null;
+    if(transform==='activeUsers')return Array.isArray(response)?new Set(response.filter(s=>s?.NowPlayingItem).map(s=>s.UserId).filter(Boolean)).size:null;
+    if(type==='jellyfin'&&field==='streams')return convertValue(type,response,field);
+    return pickJson(response,field);
   }
   async function test(id) {
     const item=state.integrations.find(x=>x.id===id);if(!item)throw new Error('Intégration inconnue');
@@ -216,5 +226,5 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
       return {id:w.id,title:w.title,integrationId:w.integrationId,source:integration?.name||'Inconnu',ok:source?.ok||false,value:source?.ok?convertValue(integration.type,source.data,w.field):null,reason:source?.reason||null};
     });
   }
-  return {list,create,update,remove,test,getInternalForType,listWidgets,upsertWidget,removeWidget,reorder,readWidgets};
+  return {list,create,update,remove,test,getInternalForType,listWidgets,upsertWidget,removeWidget,reorder,readWidgets,queryData,convertMetricValue};
 }

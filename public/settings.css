@@ -1,0 +1,47 @@
+/* Settings v0.3 — keeps the V1's typography, backgrounds, borders and accent. */
+.settings-shell{display:grid;grid-template-columns:minmax(185px,235px) minmax(0,1fr);align-items:start;gap:18px}
+.settings-sidebar{display:flex;flex-direction:column;gap:5px;position:sticky;top:12px;padding:9px;border:1px solid var(--edge);background:var(--panel);border-radius:10px}
+.settings-nav{display:flex;align-items:center;gap:11px;padding:12px;border:0;border-radius:6px;background:transparent;color:var(--muted);text-align:left;cursor:pointer;font:inherit;font-size:12px}
+.settings-nav.active,.settings-nav:hover{color:var(--accent);background:var(--shadow)}
+.settings-pane[hidden],#card-editor[hidden],#row-editor[hidden],#row-integration-fields[hidden],#row-status-fields[hidden]{display:none!important}
+.settings-content{min-width:0;display:flex;flex-direction:column;gap:12px}
+.settings-pane>.panel+.panel{margin-top:12px}
+.settings-pane .settings-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.settings-card{min-width:0}
+.settings-card label{display:block;margin:14px 0 6px;font-size:11px;font-weight:700}
+.settings-card .check-label{display:flex;align-items:center;gap:9px;cursor:pointer}
+.settings-card input[type=checkbox]{width:16px;min-height:0;height:16px;accent-color:var(--accent)}
+.settings-card button{cursor:pointer}
+.settings-card button:disabled{opacity:.55;cursor:not-allowed}
+.settings-form{max-width:750px}
+.form-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.settings-separator{border:0;border-top:1px solid var(--rail);margin:26px 0}
+.config-card-list,.config-row-list,.metric-catalog{display:flex;flex-direction:column;gap:9px}
+.config-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px;border:1px solid var(--rail);border-radius:7px;background:color-mix(in srgb,var(--panel) 84%,var(--bg))}
+.config-item.active{border-color:var(--accent)}
+.config-item .item-main{min-width:0;flex:1}
+.config-item .item-title{display:block;font-size:13px;font-weight:800;overflow-wrap:anywhere}
+.config-item .item-meta{display:block;font-size:10px;margin-top:5px;color:var(--muted);overflow-wrap:anywhere}
+.config-item .item-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.config-item .small-button{min-width:31px;min-height:30px}
+.config-item[draggable=true]{cursor:grab}
+.config-item.is-dragging{opacity:.4;border-style:dashed}
+.drag-handle{font-size:19px;color:var(--muted);user-select:none}
+.danger{color:var(--danger)!important;border-color:var(--danger)!important}
+.inline-preview{border:1px solid var(--edge);border-radius:7px;padding:12px;margin:15px 0;color:var(--ok);overflow-wrap:anywhere}
+.inline-preview.bad{color:var(--danger);border-color:var(--danger)}
+.field-browser{border:1px solid var(--rail);padding:10px;border-radius:6px;margin-top:12px;max-height:220px;overflow:auto;display:flex;gap:7px;flex-wrap:wrap}
+.field-browser button{border:1px solid var(--edge);border-radius:5px;background:var(--panel);color:var(--text);font-size:11px;padding:5px 9px}
+.settings-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
+.settings-summary>div{padding:16px;border:1px solid var(--edge);border-radius:8px;background:var(--bg)}
+.settings-summary b{display:block;font-size:32px;color:var(--accent)}
+.settings-summary small{display:block;color:var(--muted);font-size:11px}
+.quick-actions{display:flex;gap:9px;flex-wrap:wrap}
+.metric-catalog .config-item{align-items:flex-start}
+.theme-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0}
+.theme-choices button{background:var(--bg);color:var(--text);border:1px solid var(--edge);padding:18px 12px;border-radius:7px;font:inherit;text-align:left}
+.theme-choices button.active{outline:2px solid var(--accent)}
+.import-control{margin:25px 0}.import-control button{margin-top:12px}
+#diagnostic-output{overflow-wrap:anywhere}
+@media(max-width:1100px){.settings-shell{grid-template-columns:180px minmax(0,1fr)}.settings-pane .settings-layout{grid-template-columns:1fr}}
+@media(max-width:740px){.settings-shell{display:block}.settings-sidebar{position:static;flex-direction:row;overflow-x:auto;gap:5px;margin-bottom:12px;padding:6px}.settings-nav{flex:none;padding:9px;font-size:11px}.settings-nav span{white-space:nowrap}.form-two{grid-template-columns:1fr;gap:0}.config-item{align-items:flex-start;flex-wrap:wrap}.config-item .item-actions{width:100%}.settings-summary{gap:6px}.settings-summary>div{padding:10px}.settings-summary b{font-size:25px}.theme-choices{grid-template-columns:1fr}}

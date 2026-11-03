@@ -12,3 +12,21 @@
 
 /* Additional web-managed API widgets; the original V1 panels are unchanged. */
 .home-tabs{display:flex;gap:8px;margin:0 0 14px}.home-tabs a{border:1px solid var(--rail);border-radius:6px;padding:7px 12px;color:var(--muted);font-size:11px}.home-tabs a[aria-current=page]{color:var(--accent);border-color:var(--edge);background:var(--shadow)}.custom-widget-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 8px}.custom-widget-heading h2{color:var(--accent);font-size:14px;margin:0}.custom-widget-heading a{color:var(--accent);font-size:11px}.custom-widget-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.custom-widget-value{display:block;color:var(--ok);font-size:clamp(24px,3vw,37px);font-weight:800;overflow-wrap:anywhere}.custom-widget small{display:block;font-size:10px;margin-top:10px;overflow-wrap:anywhere}.custom-widget h2{white-space:normal}@media(max-width:1000px){.custom-widget-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:740px){.home-tabs{overflow:auto}.home-tabs a{white-space:nowrap}.custom-widget-grid{grid-template-columns:1fr}}
+
+/* v0.3: same V1 visual language, but the service cards are data-driven. */
+.dashboard-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0 8px}
+.dashboard-toolbar h2{font-size:13px;margin:0;color:var(--accent);letter-spacing:.5px}
+.dashboard-toolbar small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.dashboard-toolbar-actions{display:flex;gap:8px}
+.dashboard-toolbar .ui-button{font-size:11px;padding:8px 11px;background:var(--panel);border:1px solid var(--edge);border-radius:6px;color:var(--text);cursor:pointer}
+.configurable-card{min-height:215px;display:flex;flex-direction:column}
+.configurable-card .card-bottom{margin-top:auto;padding-top:12px}
+.card-links{display:flex;gap:13px;align-items:center}
+.card-edit-link{color:var(--muted)!important;font-size:10px}
+.configurable-row{min-height:25px}
+.configurable-row span{overflow-wrap:anywhere}
+.configurable-card[data-span="2"]{grid-column:span 2}
+.configurable-card[data-span="3"]{grid-column:span 3}
+.configurable-card.is-dragging{opacity:.48;border-style:dashed}
+.configurable-card[draggable=true]{cursor:grab}
+@media(max-width:740px){.dashboard-toolbar{align-items:start;flex-wrap:wrap}.dashboard-toolbar-actions{flex-wrap:wrap}.configurable-card[data-span]{grid-column:auto}}

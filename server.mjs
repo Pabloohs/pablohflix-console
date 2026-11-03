@@ -5,6 +5,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createIntegrationStore, PRESETS, jellyfinAuthHeaders } from './integrations.mjs';
+import { createDashboardStore, METRIC_TEMPLATES } from './dashboard.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || '3000');
@@ -21,6 +22,7 @@ const sessions = new Map();
 const failures = new Map();
 const caches = new Map();
 const store = createIntegrationStore({dir:process.env.DATA_DIR||path.join(ROOT,'data'),secret:SESSION_SECRET||'testing-integration-secret-00000000000000000000'});
+const dashboard = createDashboardStore({dir:process.env.DATA_DIR||path.join(ROOT,'data'),integrations:store});
 let previousCpu = null;
 
 function json(res, code, body, extras={}) {
@@ -189,7 +191,7 @@ async function status(){
   // A network/API error is unknown, not a healthy signal or a proven incident.
   return {timestamp:new Date().toISOString(),system:collectHost(),...snapshot,...results,news:cyber||[],integrations:{responsive:configured,total:7}};
 }
-const files={'/':'index.html','/index.html':'index.html','/login':'login.html','/style.css':'style.css','/app.js':'app.js','/integrations':'integrations.html','/integrations.js':'integrations.js','/integrations.css':'integrations.css','/widgets.js':'widgets.js'};
+const files={'/':'index.html','/index.html':'index.html','/login':'login.html','/style.css':'style.css','/app.js':'app.js','/integrations':'integrations.html','/integrations.js':'integrations.js','/integrations.css':'integrations.css','/widgets.js':'widgets.js','/settings':'settings.html','/settings.js':'settings.js','/settings.css':'settings.css','/dashboard-cards.js':'dashboard-cards.js'};
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
 const server=http.createServer(async(req,res)=>{
   const pathname=new URL(req.url||'/', 'http://localhost').pathname;
@@ -222,11 +224,51 @@ const server=http.createServer(async(req,res)=>{
     if(pathname.startsWith('/api/')){
       if(!authorized(req))return json(res,401,{error:'Authentification requise'});
       if(pathname==='/api/status'&&req.method==='GET')return json(res,200,await status());
-      if(pathname==='/api/catalog'&&req.method==='GET')return json(res,200,{presets:PRESETS});
+      if(pathname==='/api/catalog'&&req.method==='GET')return json(res,200,{presets:PRESETS,metrics:METRIC_TEMPLATES});
+      if(pathname==='/api/dashboard'&&req.method==='GET')return json(res,200,dashboard.list());
+      if(pathname==='/api/dashboard/data'&&req.method==='GET')return json(res,200,await dashboard.readData(await status()));
+      if(pathname==='/api/dashboard/export'&&req.method==='GET')return json(res,200,dashboard.exportLayout());
       if(pathname==='/api/integrations'&&req.method==='GET')return json(res,200,{items:store.list()});
       if(pathname==='/api/widgets'&&req.method==='GET')return json(res,200,{items:store.listWidgets()});
       if(pathname==='/api/widgets/data'&&req.method==='GET')return json(res,200,{items:await store.readWidgets()});
       if(req.method!=='POST' || !sameOrigin(req))return json(res,403,{error:'Action interdite'});
+      if(pathname==='/api/dashboard/preview') {
+        try{return json(res,200,await dashboard.previewMetric(await readBody(req,24576),await status()));}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      if(pathname==='/api/dashboard/inspect') {
+        try{return json(res,200,await dashboard.inspectApi(await readBody(req,24576)));}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      if(pathname==='/api/dashboard/cards') {
+        try{return json(res,200,{item:dashboard.upsertCard(await readBody(req,24576))});}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      if(pathname==='/api/dashboard/cards/reorder') {
+        try{return json(res,200,dashboard.reorderCards((await readBody(req,24576)).ids));}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      if(pathname==='/api/dashboard/import') {
+        try{return json(res,200,dashboard.importLayout(await readBody(req,500000)));}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      if(pathname==='/api/dashboard/reset') {
+        try{return json(res,200,dashboard.reset());}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      const cardAction=pathname.match(/^\/api\/dashboard\/cards\/([a-z0-9-]{1,56})\/(delete|duplicate)$/);
+      if(cardAction) {
+        try{return json(res,200,cardAction[2]==='delete'?(dashboard.deleteCard(cardAction[1]),{ok:true}):{item:dashboard.duplicateCard(cardAction[1])});}
+        catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
+      const cardRow=pathname.match(/^\/api\/dashboard\/cards\/([a-z0-9-]{1,56})\/rows(?:\/(reorder|delete|duplicate))?$/);
+      if(cardRow) {
+        try {
+          const body=await readBody(req,24576);
+          if(cardRow[2]==='reorder')return json(res,200,{item:dashboard.reorderRows(cardRow[1],body.ids)});
+          return json(res,200,{item:dashboard.rowAction(cardRow[1],cardRow[2]||'upsert',body)});
+        } catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
+      }
       if(pathname==='/api/integrations') {
         try {return json(res,201,{item:store.create(await readBody(req,24576))});}
         catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
@@ -235,7 +277,7 @@ const server=http.createServer(async(req,res)=>{
       if(integrationTest)return json(res,200,await store.test(integrationTest[1]));
       const integrationUpdate=pathname.match(/^\/api\/integrations\/([0-9a-f-]{36})\/(update|delete)$/);
       if(integrationUpdate) {
-        try {return json(res,200,integrationUpdate[2]==='delete'?(store.remove(integrationUpdate[1]),{ok:true}):{item:store.update(integrationUpdate[1],await readBody(req,24576))});}
+        try {return json(res,200,integrationUpdate[2]==='delete'?(dashboard.removeIntegrationReferences(integrationUpdate[1]),store.remove(integrationUpdate[1]),{ok:true}):{item:store.update(integrationUpdate[1],await readBody(req,24576))});}
         catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
       }
       if(pathname==='/api/widgets') {
@@ -251,8 +293,9 @@ const server=http.createServer(async(req,res)=>{
       return json(res,404,{error:'API inconnue'});
     }
     if(!(pathname in files)||req.method!=='GET')return json(res,404,{error:'Page introuvable'});
+    if(pathname==='/integrations'){res.writeHead(302,{Location:'/settings?tab=integrations'});return res.end();}
     if(pathname==='/login'&&authorized(req)){res.writeHead(302,{Location:'/'});return res.end();}
-    if(!['/login','/style.css','/app.js','/integrations.css','/integrations.js','/widgets.js'].includes(pathname)&&!authorized(req)){res.writeHead(302,{Location:'/login'});return res.end();}
+    if(!['/login','/style.css','/app.js','/integrations.css','/integrations.js','/widgets.js','/settings.js','/settings.css','/dashboard-cards.js'].includes(pathname)&&!authorized(req)){res.writeHead(302,{Location:'/login'});return res.end();}
     const filename=path.join(ROOT,'public',files[pathname]);
     res.writeHead(200,{'Content-Type':mime[path.extname(filename)],'Cache-Control':'no-store'});return fs.createReadStream(filename).pipe(res);
   }catch(err){return json(res,500,{error:'Erreur interne'});}

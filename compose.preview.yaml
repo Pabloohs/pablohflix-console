@@ -5,7 +5,7 @@ services:
   console:
     image: ghcr.io/pabloohs/pablohflix-console:native-preview
     container_name: pablohflix-native-preview
-    user: "1000:100" # Adapter à l'UID:GID du compte service existant
+    user: "1005:100" # UID/GID confirmé pour PabloHFlix sur ce NAS
     restart: unless-stopped
     env_file:
       - /volume1/docker/pablohflix-native-preview/.env

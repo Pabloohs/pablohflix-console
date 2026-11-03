@@ -6,6 +6,7 @@ on:
       - Dockerfile
       - server.mjs
       - integrations.mjs
+      - dashboard.mjs
       - public/**
       - scripts/**
       - .github/workflows/native-image.yml
