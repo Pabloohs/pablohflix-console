@@ -37,25 +37,43 @@ export function PabloConsoleFrame({ children }: PropsWithChildren) {
 
   return (
     <div className={styles.shell} data-theme={theme}>
-      <a href="#pablo-live-monitoring" className={styles.skipLink}>Aller à la supervision</a>
+      <a href="#pablo-live-monitoring" className={styles.skipLink}>
+        Aller à la supervision
+      </a>
       <header className={styles.topbar}>
         <div className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true">P/</span>
+          <span className={styles.mark} aria-hidden="true">
+            P/
+          </span>
           <div>
-            <div className={styles.title}>PabloHFlix <span>Console.</span></div>
+            <div className={styles.title}>
+              PabloHFlix <span>Console.</span>
+            </div>
             <div className={styles.tagline}>UNE CONSOLE. TOUS LES SYSTÈMES.</div>
           </div>
         </div>
         <nav className={styles.actions} aria-label="Navigation de la console">
-          <Link className={styles.navLink} href="/manage/boards">Configurer les widgets</Link>
-          <Link className={styles.navLink} href="/manage/integrations">Intégrations</Link>
-          <Link className={styles.navLink} href="/manage">Administration</Link>
+          <Link className={styles.navLink} href="/manage/boards">
+            Configurer les widgets
+          </Link>
+          <Link className={styles.navLink} href="/manage/integrations">
+            Intégrations
+          </Link>
+          <Link className={styles.navLink} href="/manage">
+            Administration
+          </Link>
           <label className={styles.themeLabel}>
             <span>THÈME</span>
-            <select className={styles.themeSelect} aria-label="Thème de la console"
-              value={theme} onChange={(event) => changeTheme(event.target.value as Theme)}>
+            <select
+              className={styles.themeSelect}
+              aria-label="Thème de la console"
+              value={theme}
+              onChange={(event) => changeTheme(event.target.value as Theme)}
+            >
               {themeKeys.map((key) => (
-                <option key={key} value={key}>{themes[key]}</option>
+                <option key={key} value={key}>
+                  {themes[key]}
+                </option>
               ))}
             </select>
           </label>
@@ -66,7 +84,9 @@ export function PabloConsoleFrame({ children }: PropsWithChildren) {
           <span>01 / LIVE MONITORING</span>
           <span className={styles.dataNote}>DONNÉES HOMARR · AUCUN CHIFFRE SIMULÉ</span>
         </div>
-        <section id="pablo-live-monitoring" className={styles.board} aria-label="Widgets de supervision" tabIndex={-1}>{children}</section>
+        <section id="pablo-live-monitoring" className={styles.board} aria-label="Widgets de supervision" tabIndex={-1}>
+          {children}
+        </section>
       </div>
       <footer className={styles.footer}>
         <span>PABLOHFLIX // HOMARR ENGINE</span>
