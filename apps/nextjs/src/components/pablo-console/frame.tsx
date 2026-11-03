@@ -37,6 +37,7 @@ export function PabloConsoleFrame({ children }: PropsWithChildren) {
 
   return (
     <div className={styles.shell} data-theme={theme}>
+      <a href="#pablo-live-monitoring" className={styles.skipLink}>Aller à la supervision</a>
       <header className={styles.topbar}>
         <div className={styles.brand}>
           <span className={styles.mark} aria-hidden="true">P/</span>
@@ -65,7 +66,7 @@ export function PabloConsoleFrame({ children }: PropsWithChildren) {
           <span>01 / LIVE MONITORING</span>
           <span className={styles.dataNote}>DONNÉES HOMARR · AUCUN CHIFFRE SIMULÉ</span>
         </div>
-        <section className={styles.board} aria-label="Widgets de supervision">{children}</section>
+        <section id="pablo-live-monitoring" className={styles.board} aria-label="Widgets de supervision" tabIndex={-1}>{children}</section>
       </div>
       <footer className={styles.footer}>
         <span>PABLOHFLIX // HOMARR ENGINE</span>
