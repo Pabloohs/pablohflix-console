@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import {summarizeRecordStudio} from './recordstudio.mjs';
 
 export const PRESETS = Object.freeze([
   { type: 'jellyfin', label: 'Jellyfin', port: 8096, endpoint: '/Sessions', field: 'streams', metricLabel: 'Lectures en cours', auth: 'apiKey' },
@@ -11,7 +12,7 @@ export const PRESETS = Object.freeze([
   { type: 'seerr', label: 'Seerr', port: 5055, endpoint: '/api/v1/request/count', field: 'pending', metricLabel: 'Demandes en attente', auth: 'apiKey' },
   { type: 'prowlarr', label: 'Prowlarr', port: 9696, endpoint: '/api/v1/health', field: 'health', metricLabel: 'Alertes Prowlarr', auth: 'apiKey' },
   { type: 'bazarr', label: 'Bazarr', port: 6767, endpoint: '/api/system/status', field: 'version', metricLabel: 'Version Bazarr', auth: 'apiKey' },
-  { type: 'recordstudio', label: 'Recordstudio', port: 18080, endpoint: '/api/state', field: 'status', metricLabel: 'Statut', auth: 'basic' },
+  { type: 'recordstudio', label: 'Recordstudio', port: 18080, endpoint: '/api/state', field: 'streams', metricLabel: 'Enregistrements actifs', auth: 'basic' },
   { type: 'gluetun', label: 'Gluetun', port: 8000, endpoint: '/v1/vpn/status', field: 'status', metricLabel: 'VPN', auth: 'none' },
   { type: 'pihole', label: 'Pi-hole v6', port: 80, endpoint: '/api/stats/summary', field: 'queries.total', metricLabel: 'DNS résolus', auth: 'apiKey' },
   { type: 'custom', label: 'Application personnalisée / REST JSON', port: null, endpoint: '/', field: '', metricLabel: 'Valeur API', auth: 'header' },
@@ -88,6 +89,8 @@ function pickJson(obj, field) {
   return typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) ? value : null;
 }
 function convertValue(type, response, field) {
+  // Legacy preset used "status", which cbrecorder does not return.
+  if (type === 'recordstudio' && ['status','streams'].includes(field)) return summarizeRecordStudio(response).streams;
   if (type === 'jellyfin' && field === 'streams') return Array.isArray(response) ? response.filter(x => x?.NowPlayingItem).length : null;
   if ((type === 'radarr' || type === 'sonarr') && field === 'queue') return response?.totalRecords ?? null;
   if (type === 'prowlarr' && field === 'health') return Array.isArray(response) ? response.length : null;
@@ -195,6 +198,7 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
   }
   async function query(id) { return queryData(id); }
   function convertMetricValue(response,field,transform='value',type='') {
+    if(type==='recordstudio' && transform==='value' && ['status','streams'].includes(field))return summarizeRecordStudio(response).streams;
     if(transform==='arrayLength')return Array.isArray(response)?response.length:null;
     if(transform==='playingSessions')return Array.isArray(response)?response.filter(s=>s?.NowPlayingItem).length:null;
     if(transform==='transcodes')return Array.isArray(response)?response.filter(s=>s?.NowPlayingItem&&(s.TranscodingInfo||s.PlayState?.PlayMethod==='Transcode')).length:null;
