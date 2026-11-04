@@ -38,10 +38,10 @@ txt('record-country',vr?.ok?vr.country||'Inconnu':'—');
     const badVpn=[vm,vr].some(v=>v?.ok&&(v.state!=='running'||v.match===false));
     const warnings=(down||0)+(badVpn?1:0);
     window.dispatchEvent(new CustomEvent('pablo:status',{detail:data}));
-    const state=$('global-state');
-    if(warnings>0){state.textContent='● ATTENTION';state.className='pill warn';}
-    else if(j.ok&&r.ok&&s.ok&&docker.ok&&vpnCount===2){state.textContent='● SUPERVISION ACTIVE';state.className='pill good';}
-    else {state.textContent='● SUPERVISION PARTIELLE';state.className='pill neutral';}
+    const globalState=$('global-state');
+    if(warnings>0){globalState.textContent='● ATTENTION';globalState.className='pill warn';}
+    else if(j.ok&&r.ok&&s.ok&&docker.ok&&vpnCount===2){globalState.textContent='● SUPERVISION ACTIVE';globalState.className='pill good';}
+    else {globalState.textContent='● SUPERVISION PARTIELLE';globalState.className='pill neutral';}
   }
   let busy=false;
   async function refresh(){if(busy)return;busy=true;try{const res=await fetch('/api/status',{cache:'no-store'});if(res.status===401){location.replace('/login');return;}if(!res.ok)throw Error('réponse '+res.status);render(await res.json());}catch(e){console.error('[PabloHFlix] Statut NAS indisponible',e);txt('updated','Statut NAS indisponible');const state=$('global-state');state.textContent='● STATUT NAS INDISPONIBLE';state.title='Le statut général /api/status a échoué : '+String(e?.message||'Erreur inconnue')+' · Les flux RSS sont chargés séparément.';state.className='pill warn';window.dispatchEvent(new CustomEvent('pablo:status-error',{detail:String(e?.message||e)}));}finally{busy=false;}}
