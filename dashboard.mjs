@@ -65,6 +65,9 @@ export const METRIC_TEMPLATES = Object.freeze([
   {id:'sonarr-queue',type:'sonarr',label:'File Sonarr',endpoint:'/api/v3/queue?page=1&pageSize=1',field:'totalRecords',transform:'value'},
   {id:'seerr-pending',type:'seerr',label:'Demandes Seerr en attente',endpoint:'/api/v1/request/count',field:'pending',transform:'value'},
   {id:'prowlarr-health',type:'prowlarr',label:'Alertes Prowlarr',endpoint:'/api/v1/health',field:'',transform:'arrayLength'},
+  {id:'recordstudio-live',type:'recordstudio',label:'Enregistrements actifs',endpoint:'/api/state',field:'streams',transform:'value'},
+  {id:'recordstudio-configured',type:'recordstudio',label:'Salons configurés',endpoint:'/api/state',field:'streamers.length',transform:'value'},
+  {id:'recordstudio-space',type:'recordstudio',label:'Stockage libre Recordstudio',endpoint:'/api/state',field:'disk.free_percent',transform:'value'},
 ]);
 
 export function readPath(data, field) {
