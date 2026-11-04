@@ -161,3 +161,42 @@ test('Rendu accueil : aucune erreur lorsque les APIs sont disponibles',async()=>
   assert.equal(events.some(e=>e.type==='pablo:status'),true);
   assert.deepEqual(errors,[]);
 });
+
+
+test('Les cartes signalent les métriques partielles sans déclarer le service actif',async()=>{
+  const elems=new Map();
+  const make=tag=>({
+    tag,textContent:'',className:'',title:'',dataset:{},children:[],style:{},
+    append(...nodes){this.children.push(...nodes);},
+    replaceChildren(...nodes){this.children=nodes;},
+    addEventListener(){},
+    setAttribute(){}
+  });
+  const get=id=>{
+    if(!elems.has(id))elems.set(id,make(id));
+    return elems.get(id);
+  };
+  const document={
+    getElementById:id=>id==='toggle-dashboard-edit'?null:get(id),
+    createElement:make
+  };
+  const card={id:'recordstudio',title:'RECORDSTUDIO',span:1,icon:'◉',
+    description:'CAPTURE VIDÉO',url:'',
+    rows:[
+      {id:'a',label:'Streams en cours',ok:false,value:null},
+      {id:'b',label:'Stockage libre V2',ok:true,value:99,suffix:'%',format:'percent'},
+      {id:'c',label:'VPN Suisse',ok:false,value:null}
+    ]
+  };
+  vm.runInNewContext(
+    fs.readFileSync(path.join(import.meta.dirname,'../public/dashboard-cards.js'),'utf8'),
+    {document,fetch:async()=>({ok:true,status:200,json:async()=>({cards:[card]})}),
+      setInterval(){},Intl},{filename:'public/dashboard-cards.js'}
+  );
+  await new Promise(resolve=>setImmediate(resolve));
+  const grid=get('dashboard-cards');
+  assert.equal(grid.children.length,1);
+  const badge=grid.children[0].children[0].children.at(-1);
+  assert.equal(badge.textContent,'◐ PARTIEL');
+  assert.match(badge.title,/1\/3 indicateurs/);
+});
