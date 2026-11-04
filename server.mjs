@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createIntegrationStore, PRESETS, jellyfinAuthHeaders } from './integrations.mjs';
 import { createDashboardStore, METRIC_TEMPLATES } from './dashboard.mjs';
 import {createPreferenceStore, createFeedReader, OVERVIEW_METRICS} from './preferences.mjs';
+import {summarizeRecordStudio} from './recordstudio.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || '3000');
@@ -194,6 +195,17 @@ async function pihole(){
   const data=await fetchJson(url+'/api/stats/summary',headers);
   return {ok:true,queries:number(data.queries?.total),blockedPercent:number(data.queries?.percent_blocked)};
 }
+// Unlike cbrecorder's raw /api/state, only anonymous aggregate counts reach the browser.
+async function recordstudio() {
+  const source=store.list().find(i=>i.type==='recordstudio');
+  if(!source) return {ok:false,streams:null,reason:'Intégration Recordstudio API non configurée'};
+  try {
+    return summarizeRecordStudio(await store.queryData(source.id,'/api/state'));
+  } catch(e) {
+    return {ok:false,streams:null,reason:String(e?.message||'API Recordstudio indisponible').slice(0,140)};
+  }
+}
+
 // A Gluetun integration is considered online when its VPN status endpoint works.
 // Geolocation/public IP is optional for displaying the tunnel state.
 async function readVpnFromIntegration(integrations, integrationId, expectedCountry='') {
@@ -250,18 +262,19 @@ async function vpn(prefix){
 
 function decodeXml(s){return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();}
 async function status(){
-  const [j,r,s,requests,dns,mediaVpn,recVpn,rss]=await Promise.all([
+  const [j,r,s,requests,dns,recordStudio,mediaVpn,recVpn,rss]=await Promise.all([
     cached('jellyfin',20000,jellyfin),cached('radarr',30000,()=>arr('RADARR','http://radarr:7878')),
     cached('sonarr',30000,()=>arr('SONARR','http://sonarr:8989')),
     cached('seerr',30000,seerr),cached('pihole',60000,pihole),
+    cached('recordstudio',15000,recordstudio),
     cached('vpnmedia',20000,()=>vpn('VPN_MEDIA')),cached('vpnrecord',20000,()=>vpn('VPN_RECORD')),
     feedReader.read()
   ]);
   const snapshot=collectSnapshot();
-  const results={jellyfin:j,radarr:r,sonarr:s,seerr:requests,pihole:dns,vpnMedia:mediaVpn,vpnRecord:recVpn};
+  const results={jellyfin:j,radarr:r,sonarr:s,seerr:requests,pihole:dns,recordstudio:recordStudio,vpnMedia:mediaVpn,vpnRecord:recVpn};
   const configured=Object.values(results).filter(x=>x?.ok===true).length;
   return {timestamp:new Date().toISOString(),system:collectHost(),...snapshot,...results,
-    news:rss.items.slice(0,16),rss,experience:preferences.read(),integrations:{responsive:configured,total:7}};
+    news:rss.items.slice(0,16),rss,experience:preferences.read(),integrations:{responsive:configured,total:8}};
 }
 async function diagnosticStatus(snapshot){
   const config=preferences.read();
@@ -289,6 +302,16 @@ async function diagnosticStatus(snapshot){
     'SMART nécessite une interrogation depuis UGOS/hôte, pas depuis un conteneur sans privilèges.',
     'Installer et planifier le collecteur hôte, puis contrôler que smartctl et lsblk sont disponibles.'
   ]);
+  add('recordstudio','Recordstudio · enregistrements',
+    snapshot.recordstudio?.ok?'ready':store.list().some(i=>i.type==='recordstudio')?'error':'missing',
+    snapshot.recordstudio?.ok
+      ?snapshot.recordstudio.streams+' enregistrement(s) en cours · '+snapshot.recordstudio.configured+' salon(s) configuré(s)'
+      :snapshot.recordstudio?.reason||'API Recordstudio non configurée.',
+    snapshot.recordstudio?.ok?[]:[
+      'Dans Intégrations API, créer Recordstudio avec http://recordstudio-vpn:18080, Basic admin et mot de passe cbrecorder.',
+      'Tester GET /api/state depuis le réseau Docker de PabloHFlix.',
+      snapshot.recordstudio?.reason||'Vérifier l’accès réseau et les identifiants.'
+    ],'integrations');
   for(const [name,label,key] of [['jellyfin','Jellyfin','jellyfin'],['radarr','Radarr','radarr'],['sonarr','Sonarr','sonarr'],['seerr','Seerr','seerr']]){
     const value=snapshot[key];
     const configured=store.list().some(x=>x.type===name);
