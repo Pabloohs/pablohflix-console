@@ -34,6 +34,10 @@ case "$LAST" in ''|*[!0-9]*) LAST=0;; esac
 if [ $((NOW - LAST)) -ge 3600 ] && command -v lsblk >/dev/null 2>&1; then
   : > "$TMP/disks.psv"
   lsblk -dn -o NAME,TYPE 2>/dev/null | awk '$2=="disk"{print $1}' | while IFS= read -r NAME; do
+    # zram and other pseudo-devices are not physical SMART disks.
+    case "$NAME" in
+      zram*|ram[0-9]*|loop[0-9]*|nbd[0-9]*|md[0-9]*|dm-[0-9]*|sr[0-9]*) continue ;;
+    esac
     DEV="/dev/$NAME"
     MODEL=$(lsblk -dn -o MODEL "$DEV" 2>/dev/null | tr '|\r\n' '   ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | cut -c1-60)
     SIZE=$(lsblk -dn -o SIZE "$DEV" 2>/dev/null | tr '|\r\n' '   ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | cut -c1-18)
@@ -43,7 +47,11 @@ if [ $((NOW - LAST)) -ge 3600 ] && command -v lsblk >/dev/null 2>&1; then
       OUTPUT=$(smartctl -H "$DEV" 2>/dev/null || true)
       if printf '%s\n' "$OUTPUT" | grep -Eq '(PASSED|OK)'; then HEALTH=PASSED; fi
       if printf '%s\n' "$OUTPUT" | grep -Eq '(FAILED|FAILING)'; then HEALTH=FAILED; fi
-      TEMP=$(smartctl -A "$DEV" 2>/dev/null | awk '$1==194 && $2 ~ /^Temperature/{print $10;exit}' | grep -E '^[0-9]+$' || true)
+      # ATA attribute 194; NVMe reports a standalone "Temperature: N Celsius".
+      TEMP=$(smartctl -A "$DEV" 2>/dev/null | awk '
+        $1=="194" && $2 ~ /^Temperature/ && $10 ~ /^[0-9]+$/ {print $10;exit}
+        $1=="Temperature:" && $2 ~ /^[0-9]+$/ {print $2;exit}
+      ' || true)
     fi
     printf '%s|%s|%s|%s|%s\n' "$NAME" "$MODEL" "$SIZE" "$HEALTH" "$TEMP" >> "$TMP/disks.psv"
   done
