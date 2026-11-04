@@ -26,6 +26,11 @@ test('API : session, modification des groupes, diagnostics et sources protégés
     config.quickLinks.push({id:'mon-lien',name:'Ma Cave',groupId:'mon-groupe',url:'http://192.168.1.200:3010'});
     r=await req('/api/experience',{method:'POST',headers,body:JSON.stringify(config)});assert.equal(r.status,200);
     const saved=await r.json();assert.equal(saved.quickLinks.at(-1).name,'Ma Cave');
+    // RSS must be available via its own endpoint, regardless of the media/NAS status.
+    saved.feeds=[];
+    r=await req('/api/experience',{method:'POST',headers,body:JSON.stringify(saved)});assert.equal(r.status,200);
+    r=await req('/api/rss',{headers});assert.equal(r.status,200);
+    const rss=await r.json();assert.deepEqual(rss.items,[]);assert.deepEqual(rss.feeds,[]);assert.ok(Array.isArray(rss.groups));
     r=await req('/api/experience',{method:'POST',headers:{...headers,origin:'https://evil.example'},body:JSON.stringify(config)});assert.equal(r.status,403);
     r=await req('/api/setup/diagnostics',{headers});assert.equal(r.status,200);
     const diagnostics=await r.json();

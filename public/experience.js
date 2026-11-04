@@ -1,7 +1,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const node=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=String(text);return el;};
-let currentGroup='all',lastStatus=null;
+let currentGroup='all',lastStatus=null,latestRss=null;
 function displayOverview(data){
   const el=$('top-metrics');if(!el)return;
   const countKnown=[data.vpnMedia,data.vpnRecord].filter(v=>v?.ok).length;
@@ -35,13 +35,13 @@ function displayLinks(config){
   }
   if(!root.children.length)root.append(node('p','muted','Aucun accès rapide. Ajoute tes liens depuis Settings → Accès rapides.'));
 }
-function displayNews(data){
+function displayNews(rss){
   const root=$('news-list'),tabs=$('rss-group-tabs'),hint=$('news-status');if(!root||!tabs)return;
-  const rss=data.rss||{groups:[],feeds:[],items:[]};
+  rss=rss||{groups:[],feeds:[],items:[]};
   if(currentGroup!=='all' && !rss.groups.some(g=>g.id===currentGroup))currentGroup='all';
   tabs.replaceChildren();
   const groups=[{id:'all',name:'Tous'},...(rss.groups||[])];
-  for(const g of groups){const button=node('button',currentGroup===g.id?'active':'',g.name);button.type='button';button.setAttribute('aria-pressed',String(currentGroup===g.id));button.addEventListener('click',()=>{currentGroup=g.id;displayNews(lastStatus||data);});tabs.append(button);}
+  for(const g of groups){const button=node('button',currentGroup===g.id?'active':'',g.name);button.type='button';button.setAttribute('aria-pressed',String(currentGroup===g.id));button.addEventListener('click',()=>{currentGroup=g.id;displayNews(latestRss);});tabs.append(button);}
   const items=(rss.items||[]).filter(x=>currentGroup==='all'||x.groupId===currentGroup);
   root.replaceChildren();
   if(!items.length){
@@ -74,12 +74,36 @@ window.addEventListener('pablo:status',event=>{
   lastStatus=event.detail;
   displayOverview(lastStatus);
   displayLinks(lastStatus.experience||{quickGroups:[],quickLinks:[]});
-  displayNews(lastStatus);
+  // Global status changes must not overwrite the independently loaded RSS articles.
   displaySources();
 });
 fetch('/api/experience',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(cfg=>{if(cfg)displayLinks(cfg);}).catch(()=>{});
-window.addEventListener('pablo:status-error',()=>{
-  const news=$('news-list');news?.replaceChildren(node('p','bad-text','Données indisponibles : ouvre Settings → Sources ou consulte les logs du conteneur.'));
-  const root=$('source-list');root?.replaceChildren(node('p','bad-text','Le serveur n’a pas fourni de statut. Voir les logs et Settings → Sources.'));
+// The RSS feed has its own API. A 500 on /api/status must not blank a working feed.
+let rssLoading=false;
+async function refreshRss(){
+  if(rssLoading)return;
+  rssLoading=true;
+  try{
+    const response=await fetch('/api/rss',{cache:'no-store'});
+    if(response.status===401){location.replace('/login');return;}
+    if(!response.ok)throw Error(`RSS HTTP ${response.status}`);
+    const data=await response.json();
+    if(!Array.isArray(data?.items)||!Array.isArray(data?.feeds)||!Array.isArray(data?.groups))throw Error('Réponse RSS invalide');
+    latestRss=data;
+    displayNews(data);
+  }catch(e){
+    console.error('[PabloHFlix] Chargement RSS en échec',e);
+    if(latestRss){displayNews(latestRss);const hint=$('news-status');if(hint){hint.textContent+=' · Mise à jour impossible';hint.className='footnote bad-text';}}
+    else {
+      const news=$('news-list');news?.replaceChildren(node('p','bad-text',`Flux RSS indisponibles : ${e.message}. Vérifie Settings → Flux RSS.`));
+      const hint=$('news-status');if(hint){hint.textContent='La requête RSS a échoué indépendamment du statut du NAS.';hint.className='footnote bad-text';}
+    }
+  }finally{rssLoading=false;}
+}
+refreshRss();setInterval(refreshRss,60000);
+window.addEventListener('pablo:status-error',event=>{
+  // Only the system status is unavailable. Do not clear RSS content or shortcuts.
+  const root=$('source-list');root?.replaceChildren(node('p','bad-text','Statut général indisponible : voir Settings → Sources et les logs du conteneur.'));
+  console.error('[PabloHFlix] Statut général indisponible',event.detail);
 });
 })();

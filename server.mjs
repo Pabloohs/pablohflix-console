@@ -311,6 +311,9 @@ const server=http.createServer(async(req,res)=>{
     }
     if(pathname.startsWith('/api/')){
       if(!authorized(req))return json(res,401,{error:'Authentification requise'});
+      // RSS is intentionally decoupled from the NAS/media status endpoint.
+      // A failure elsewhere must never hide independently available articles.
+      if(pathname==='/api/rss'&&req.method==='GET')return json(res,200,await feedReader.read());
       if(pathname==='/api/status'&&req.method==='GET')return json(res,200,await status());
       if(pathname==='/api/experience'&&req.method==='GET')return json(res,200,preferences.read());
       if(pathname==='/api/overview/options'&&req.method==='GET')return json(res,200,{options:OVERVIEW_METRICS});

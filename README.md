@@ -106,3 +106,7 @@ node --test tests/*.test.mjs
 - `archive/pablohflix-homarr-v2-2026-11-03` — ancienne adaptation Homarr.
 - `archive/pablohflix-native-v0.2-before-settings-2026-11-04` — v0.2 native.
 - `archive/pablohflix-native-v0.3-before-sources-2026-11-04` — v0.3 avant refonte des sources.
+
+## Correctif RSS indépendant du statut NAS
+
+Depuis le correctif du 4 novembre 2026, la page d'accueil lit les articles via `GET /api/rss` (session requise) indépendamment de `GET /api/status`. L'erreur du bandeau « Statut NAS indisponible » n'efface donc plus des articles déjà disponibles. Pour diagnostiquer une panne globale distincte, consulter `sudo docker logs --tail 100 pablohflix-native-preview` puis Settings → Sources. Les flux restent soumis au cache et aux contrôles HTTPS/DNS du lecteur RSS existant.
