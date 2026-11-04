@@ -194,30 +194,58 @@ async function pihole(){
   const data=await fetchJson(url+'/api/stats/summary',headers);
   return {ok:true,queries:number(data.queries?.total),blockedPercent:number(data.queries?.percent_blocked)};
 }
+// A Gluetun integration is considered online when its VPN status endpoint works.
+// Geolocation/public IP is optional for displaying the tunnel state.
+async function readVpnFromIntegration(integrations, integrationId, expectedCountry='') {
+  const [status,publicIp] = await Promise.allSettled([
+    integrations.queryData(integrationId,'/v1/vpn/status'),
+    integrations.queryData(integrationId,'/v1/publicip/ip')
+  ]);
+  if(status.status!=='fulfilled') {
+    return {ok:false,configured:true,state:'unknown',ip:null,country:null,
+      expected:expectedCountry||null,match:null,
+      reason:String(status.reason?.message||'Statut VPN inaccessible').slice(0,140)};
+  }
+  const statusValue=typeof status.value?.status==='string'?status.value.status.toLowerCase():'unknown';
+  const ipData=publicIp.status==='fulfilled'?publicIp.value:null;
+  const ip=typeof ipData?.public_ip==='string'?ipData.public_ip:null;
+  const country=typeof (ipData?.country_code||ipData?.country)==='string'?(ipData.country_code||ipData.country):null;
+  const match=expectedCountry&&country?country.toUpperCase()===expectedCountry.toUpperCase():null;
+  const ipError=publicIp.status==='rejected'
+    ?String(publicIp.reason?.message||'Endpoint IP indisponible').slice(0,140)
+    :null;
+  const unverifiedCountry=Boolean(expectedCountry&&!country);
+  return {ok:true,state:statusValue,ip,country,expected:expectedCountry||null,match,
+    configured:true,partial:Boolean(ipError||unverifiedCountry),
+    reason:ipError?'IP publique : '+ipError:unverifiedCountry?'Pays de sortie non vérifiable via l’API':null};
+}
 async function vpn(prefix){
   const pref=preferences.read().vpns[prefix==='VPN_MEDIA'?'media':'record'];
   if(pref?.integrationId){
-    if(!store.list().some(x=>x.id===pref.integrationId))return {ok:false,reason:'Intégration VPN supprimée',configured:false,state:'unknown'};
-    try{
-      const [result,publicIp]=await Promise.all([
-        store.queryData(pref.integrationId,'/v1/vpn/status'),
-        store.queryData(pref.integrationId,'/v1/publicip/ip'),
-      ]);
-      const country=publicIp.country_code||publicIp.country||null;
-      return {ok:true,state:result.status||'unknown',ip:publicIp.public_ip||null,country,expected:pref.expectedCountry||null,match:pref.expectedCountry&&country?country.toUpperCase()===pref.expectedCountry:null,configured:true};
-    }catch(e){return {ok:false,reason:String(e.message||'API VPN inaccessible').slice(0,140),configured:true,state:'unknown'};}
+    if(!store.list().some(x=>x.id===pref.integrationId))
+      return {ok:false,reason:'Intégration VPN supprimée',configured:false,state:'unknown'};
+    return readVpnFromIntegration(store,pref.integrationId,pref.expectedCountry||'');
   }
   const url=endpoint(prefix+'_URL','');
-  if(!url)return {ok:false,reason:'VPN non configuré dans Settings',configured:false,state:'unknown',ip:null,country:null};
+  if(!url)return {ok:false,reason:'VPN non associé dans Settings → Sources',configured:false,state:'unknown',ip:null,country:null};
   const key=process.env[prefix+'_API_KEY'];
   const headers=key?{'X-API-Key':key}:{};
-  const [result,publicIp]=await Promise.all([
+  const [status,publicIp]=await Promise.allSettled([
     fetchJson(url+'/v1/vpn/status',headers),fetchJson(url+'/v1/publicip/ip',headers)
   ]);
-  const expected=process.env[prefix+'_EXPECTED_COUNTRY']||null;
-  const country=publicIp.country_code||publicIp.country||null;
-  const match=expected&&country?String(country).toLowerCase()===expected.toLowerCase():null;
-  return {ok:true,state:result.status||'unknown',ip:publicIp.public_ip||null,country,expected,match,configured:true};
+  const expected=process.env[prefix+'_EXPECTED_COUNTRY']||'';
+  if(status.status!=='fulfilled')
+    return {ok:false,configured:true,state:'unknown',reason:String(status.reason?.message||'Statut VPN inaccessible').slice(0,140)};
+  const data=status.value;
+  const ipData=publicIp.status==='fulfilled'?publicIp.value:null;
+  const country=ipData?.country_code||ipData?.country||null;
+  const match=expected&&country?String(country).toUpperCase()===expected.toUpperCase():null;
+  const ipError=publicIp.status==='rejected'?String(publicIp.reason?.message||'API IP indisponible').slice(0,140):null;
+  const unverifiedCountry=Boolean(expected&&!country);
+  return {ok:true,state:String(data?.status||'unknown').toLowerCase(),
+    ip:ipData?.public_ip||null,country,expected:expected||null,match,
+    configured:true,partial:Boolean(ipError||unverifiedCountry),
+    reason:ipError?'IP publique : '+ipError:unverifiedCountry?'Pays de sortie non vérifiable via l’API':null};
 }
 
 function decodeXml(s){return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();}
@@ -267,7 +295,7 @@ async function diagnosticStatus(snapshot){
     add(name,label,value?.ok?'ready':configured?'error':'missing',value?.ok?'API joignable.':configured?'L’API ne répond pas ou refuse les identifiants.':'Aucune intégration configurée.',[value?.ok?'':configured?'Dans Intégrations, utiliser « Tester » pour obtenir le code HTTP ou la cause réseau.':'Dans Intégrations API, ajouter le service avec son URL Docker et sa clé API.'].filter(Boolean),'integrations');
   }
   for(const [id,label,value,key] of [['vpnmedia','VPN Media',snapshot.vpnMedia,'media'],['vpnrecord','VPN Recordstudio',snapshot.vpnRecord,'record']]){
-    add(id,label,value?.ok?'ready':value?.configured?'error':'missing',value?.ok?`${value.state||'inconnu'} · ${value.country||'pays non connu'}`:value?.reason||'VPN non configuré.',value?.ok?[]:['Créer une intégration Gluetun dans Intégrations API.',`Dans Settings → Sources, attribuer l’intégration au profil VPN ${key}.`,value?.reason||'Vérifier le contrôle Gluetun et son authentification.'],'sources');
+    add(id,label,value?.ok?(value.partial?'partial':'ready'):value?.configured?'error':'missing',value?.ok?`${value.state||'inconnu'} · ${value.country||'pays non vérifié'} · ${value.ip||'IP non mesurée'}${value.reason?' · '+value.reason:''}`:value?.reason||'VPN non configuré.',value?.ok?(value.partial?['Le tunnel est joignable ; vérifier séparément les droits API sur /v1/publicip/ip et la disponibilité du code pays.']:[]):['Créer une intégration Gluetun dans Intégrations API.',`Dans Settings → Sources, attribuer l’intégration au profil VPN ${key}.`,value?.reason||'Vérifier le contrôle Gluetun et son authentification.'],'sources');
   }
   const feedIssues=snapshot.rss?.feeds?.filter(x=>!x.ok)||[];
   add('rss','Actualité cyber / RSS',!config.feeds.some(f=>f.enabled)?'missing':feedIssues.length?'error':'ready',!config.feeds.some(f=>f.enabled)?'Aucun flux activé.':feedIssues.length?`${feedIssues.length} flux en erreur · ${feedIssues.map(x=>x.name+': '+x.reason).join(' | ').slice(0,220)}`:`${snapshot.rss.feeds.length} flux accessibles · ${snapshot.news.length} articles`,feedIssues.length?['Vérifier URL, DNS et HTTPS dans Settings → Flux RSS.','Le NAS doit pouvoir sortir en HTTPS (port 443). Aucun RSS ne requiert l’accès au LAN.']:[],'feeds');
@@ -417,4 +445,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(err){console.error('[PabloHFlix] Requête en échec',pathname,err?.message||err);return json(res,500,{error:'Erreur interne — consulter les logs du conteneur et Settings → Sources'});}
 });
 if(process.argv[1]===fileURLToPath(import.meta.url)) server.listen(PORT,'0.0.0.0',()=>console.log(`PabloHFlix Console listening on ${PORT}`));
-export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml,parseSmartDisks };
+export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml,parseSmartDisks,readVpnFromIntegration };
