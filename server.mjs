@@ -86,6 +86,23 @@ function mountedVolumeStats(mount) {
     return {totalBytes,freeBytes,usedPercent,freePercent:100-usedPercent,method:'statfs'};
   }catch{return null;}
 }
+// Filter out RAM-backed and virtual block devices from existing SMART inventories.
+function parseSmartDisks(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  return raw.trim().split(/\r?\n/).filter(Boolean).map(line => {
+    const [device, model, size, health, temp] = line.split('|');
+    const name = String(device || '').trim();
+    if (!/^[a-z0-9._-]{1,32}$/i.test(name) ||
+        /^(?:zram|ram\d+|loop\d+|nbd\d+|md\d+|dm-\d+|sr\d+)/i.test(name)) return null;
+    return {
+      device: name, model: (model || '').slice(0, 120),
+      size: (size || '').slice(0, 22),
+      health: ['PASSED','FAILED','UNKNOWN'].includes(health) ? health : 'UNKNOWN',
+      tempC: /^\d+$/.test(temp || '') ? number(temp) : null
+    };
+  }).filter(Boolean);
+}
+
 function collectSnapshot() {
   const raw=localFile('docker.psv');
   const probeAt=(localFile('updated_at')||'').trim()||null;
@@ -117,10 +134,7 @@ function collectSnapshot() {
   if(!volumes.volume1)volumes.volume1=mountedVolumeStats(process.env.HOST_VOLUME1_PATH||'/app/data');
   if(!volumes.volume2)volumes.volume2=mountedVolumeStats(process.env.HOST_VOLUME2_PATH||'/app/volume2-probe');
   const disksRaw=fresh?localFile('disks.psv'):null;
-  const disks=disksRaw===null?[]:disksRaw.trim().split(/\r?\n/).filter(Boolean).map(line=>{
-    const [device,model,size,health,temp]=line.split('|');
-    return {device:(device||'').slice(0,32),model:(model||'').slice(0,64),size:(size||'').slice(0,22),health:['PASSED','FAILED','UNKNOWN'].includes(health)?health:'UNKNOWN',tempC:(/^\d+$/.test(temp||''))?number(temp):null};
-  });
+  const disks=parseSmartDisks(disksRaw);
   return {docker,volumes,disks,probeAt,probeFresh:Boolean(fresh),collectorPresent:raw!==null,metricsDir:METRICS};
 }
 async function fetchJson(url, headers={}, timeout=4200, extra={}) {
@@ -403,4 +417,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(err){console.error('[PabloHFlix] Requête en échec',pathname,err?.message||err);return json(res,500,{error:'Erreur interne — consulter les logs du conteneur et Settings → Sources'});}
 });
 if(process.argv[1]===fileURLToPath(import.meta.url)) server.listen(PORT,'0.0.0.0',()=>console.log(`PabloHFlix Console listening on ${PORT}`));
-export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml };
+export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml,parseSmartDisks };
