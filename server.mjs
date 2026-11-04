@@ -22,6 +22,7 @@ if (!TEST && (PASSWORD.length < 14 || SESSION_SECRET.length < 32)) {
 const sessions = new Map();
 const failures = new Map();
 const caches = new Map();
+const resourceHealthCache = new Map();
 const DATA = process.env.DATA_DIR||path.join(ROOT,'data');
 const store = createIntegrationStore({dir:DATA,secret:SESSION_SECRET||'testing-integration-secret-00000000000000000000'});
 const preferences = createPreferenceStore({dir:DATA});
@@ -220,7 +221,7 @@ async function status(){
   return {timestamp:new Date().toISOString(),system:collectHost(),...snapshot,...results,
     news:rss.items.slice(0,16),rss,experience:preferences.read(),integrations:{responsive:configured,total:7}};
 }
-function diagnosticStatus(snapshot){
+async function diagnosticStatus(snapshot){
   const config=preferences.read();
   const result=[];
   const add=(id,label,kind,summary,steps,tab='sources')=>result.push({id,label,kind,summary,steps,tab});
@@ -257,10 +258,23 @@ function diagnosticStatus(snapshot){
   const feedIssues=snapshot.rss?.feeds?.filter(x=>!x.ok)||[];
   add('rss','Actualité cyber / RSS',!config.feeds.some(f=>f.enabled)?'missing':feedIssues.length?'error':'ready',!config.feeds.some(f=>f.enabled)?'Aucun flux activé.':feedIssues.length?`${feedIssues.length} flux en erreur · ${feedIssues.map(x=>x.name+': '+x.reason).join(' | ').slice(0,220)}`:`${snapshot.rss.feeds.length} flux accessibles · ${snapshot.news.length} articles`,feedIssues.length?['Vérifier URL, DNS et HTTPS dans Settings → Flux RSS.','Le NAS doit pouvoir sortir en HTTPS (port 443). Aucun RSS ne requiert l’accès au LAN.']:[],'feeds');
   add('pihole','Pi-hole',snapshot.pihole?.ok?'ready':store.list().some(x=>x.type==='pihole')?'error':'missing',snapshot.pihole?.ok?'API connectée':snapshot.pihole?.reason||'Pi-hole non configuré.',snapshot.pihole?.ok?[]:['Dans Intégrations API, ajouter « Pi-hole v6 », son URL interne et son mot de passe d’application (clé API du formulaire).','Tester la connexion, puis vérifier son accès réseau depuis le conteneur.'],'integrations');
-  // Additional API connections are discoverable as resources without exposing credentials.
-  for(const integration of store.list()) {
-    if(['jellyfin','radarr','sonarr','seerr'].includes(integration.type))continue;
-    add('api-'+integration.id, integration.name+' · API', 'partial', 'Intégration enregistrée. Son état peut être testé depuis Intégrations API.', ['Cliquer sur Tester dans l’onglet Intégrations pour contrôler la connexion et ses identifiants.'], 'integrations');
+  // User-selected custom integrations are probed for actual API availability. Others remain untested.
+  const managed=store.list().filter(x=>!['jellyfin','radarr','sonarr','seerr'].includes(x.type));
+  const chosen=new Set(config.resourceSources||[]);
+  const toCheck=managed.filter(x=>chosen.has('api-'+x.id)).slice(0,12);
+  const results=new Map();
+  await Promise.all(toCheck.map(async item=>{
+    const cached=resourceHealthCache.get(item.id);
+    if(cached && Date.now()-cached.at<30000){results.set(item.id,cached.value);return;}
+    let value;
+    try{value=await store.test(item.id);}catch(e){value={ok:false,reason:String(e?.message||'Connexion impossible')};}
+    resourceHealthCache.set(item.id,{at:Date.now(),value});results.set(item.id,value);
+  }));
+  for(const integration of managed){
+    const current=results.get(integration.id);
+    add('api-'+integration.id, integration.name+' · API',current?.ok?'ready':current?'error':'partial',
+      current?.ok?'API joignable.':current?'Test échoué : '+(current.reason||'Erreur inconnue'):'Intégration enregistrée, non testée pour ce panneau.',
+      current?.ok?[]:['Dans Intégrations API, cliquer sur Tester pour vérifier les identifiants et l’accès réseau.'],'integrations');
   }
   return {checkedAt:new Date().toISOString(),sources:result,collector:{path:METRICS,lastUpdate:snapshot.probeAt||null,fresh:snapshot.probeFresh,script:'/scripts/collect-nas.sh'}};
 }
@@ -300,7 +314,7 @@ const server=http.createServer(async(req,res)=>{
       if(pathname==='/api/status'&&req.method==='GET')return json(res,200,await status());
       if(pathname==='/api/experience'&&req.method==='GET')return json(res,200,preferences.read());
       if(pathname==='/api/overview/options'&&req.method==='GET')return json(res,200,{options:OVERVIEW_METRICS});
-      if(pathname==='/api/setup/diagnostics'&&req.method==='GET')return json(res,200,diagnosticStatus(await status()));
+      if(pathname==='/api/setup/diagnostics'&&req.method==='GET')return json(res,200,await diagnosticStatus(await status()));
       if(pathname==='/api/catalog'&&req.method==='GET')return json(res,200,{presets:PRESETS,metrics:METRIC_TEMPLATES});
       if(pathname==='/api/dashboard'&&req.method==='GET')return json(res,200,dashboard.list());
       if(pathname==='/api/dashboard/data'&&req.method==='GET')return json(res,200,await dashboard.readData(await status()));
@@ -310,7 +324,7 @@ const server=http.createServer(async(req,res)=>{
       if(pathname==='/api/widgets/data'&&req.method==='GET')return json(res,200,{items:await store.readWidgets()});
       if(req.method!=='POST' || !sameOrigin(req))return json(res,403,{error:'Action interdite'});
       if(pathname==='/api/experience') {
-        try{const updated=preferences.save(await readBody(req,110000));caches.clear();return json(res,200,updated);}
+        try{const updated=preferences.save(await readBody(req,110000));caches.clear();resourceHealthCache.clear();return json(res,200,updated);}
         catch(e){return json(res,400,{error:String(e.message).slice(0,200)});}
       }
       if(pathname==='/api/rss/test') {

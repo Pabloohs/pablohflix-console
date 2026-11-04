@@ -8,7 +8,7 @@ Dashboard privé UGREEN DXP4800 Pro / UGOS Pro, interface originale **PabloHFlix
 - **Settings → Flux RSS & groupes** : créer/renommer/réordonner/supprimer des groupes et des flux RSS/Atom HTTPS, activer/désactiver et tester chaque URL ; afficher les articles par catégorie, avec les erreurs explicites. Flux CERT-FR initial conservé. Lecture limitée à 700 Ko/flux, DNS épinglé et destinations privées refusées.
 - **Settings → Accès rapides & groupes** : tous les liens de la V1 sont importés comme raccourcis modifiables. Ajouter, supprimer, renommer, regrouper et réordonner (flèches).
 - **Settings → Indicateurs du bandeau** : jusqu'à quatre métriques choisies parmi Docker, VPN, alertes, stockage, sources disponibles et actualités.
-- **Settings → Sources affichées** : choisir/réordonner les lignes « État des sources », y compris les nouvelles intégrations API personnalisées.
+- **Settings → Sources affichées** : choisir/réordonner les lignes « État des sources », y compris les nouvelles intégrations API personnalisées. Les sources personnalisées sélectionnées sont interrogées (statut joignable / erreur) avec mise en cache de 30 secondes.
 - **Mesures de stockage automatiques** : statfs sur le petit dossier dédié du Volume 1 (`/app/data`) et du Volume 2 (`/app/volume2-probe`), sans parcourir les données utilisateurs, en lecture seule. Le collecteur hôte reste une alternative.
 - **Intégrations Gluetun** : associer deux intégrations (Media / Recordstudio), configurer le pays attendu, lire statut/pays/IP par API depuis le web. Nécessite un contrôle Gluetun accessible depuis les réseaux Docker autorisés.
 - **Pi-hole v6** : nouveau connecteur web ; utilise le mot de passe d'application pour créer une session FTL et lire les métriques. Pas de mot de passe en clair retourné au navigateur.
@@ -105,4 +105,4 @@ node --test tests/*.test.mjs
 - `archive/homarr-upstream-dev-2026-11-03` — Homarr amont.
 - `archive/pablohflix-homarr-v2-2026-11-03` — ancienne adaptation Homarr.
 - `archive/pablohflix-native-v0.2-before-settings-2026-11-04` — v0.2 native.
-- À créer avant publication v0.4 : archive de la v0.3 sur la branche actuelle.
+- `archive/pablohflix-native-v0.3-before-sources-2026-11-04` — v0.3 avant refonte des sources.
