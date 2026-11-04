@@ -10,7 +10,7 @@ process.env.DASHBOARD_PASSWORD='test-password-is-long-enough';
 process.env.DASHBOARD_SESSION_SECRET='test-secret-012345678901234567890123456789';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pablo-test-'));
 process.env.METRICS_DIR=dir;
-const {server,collectSnapshot,safeEqual,decodeXml}=await import('../server.mjs');
+const {server,collectSnapshot,safeEqual,decodeXml,parseSmartDisks}=await import('../server.mjs');
 
 test('comparaison protégée et nettoyage XML',()=>{
   assert.equal(safeEqual('abcdef','abcdef'),true);
@@ -50,4 +50,25 @@ test('Libellé système : ne présente plus les métriques disponibles comme non
   const html=fs.readFileSync(path.join(import.meta.dirname,'../public/index.html'),'utf8');
   assert.match(html,/Mesures système du NAS · actualisation toutes les 30 s/);
   assert.doesNotMatch(html,/hôte à confirmer/);
+});
+
+
+test('SMART : zram exclu, modèles physiques et NVMe complets',()=>{
+  const input=[
+    'sda|ST6000NM021A-2R7101|5.5T|PASSED|42',
+    'sdb|ST6000NM021A-2R7101|5.5T|PASSED|38',
+    'sdc|ST6000NM021A-2R7101|5.5T|PASSED|40',
+    'sdd|ST33000651NS|2.7T|PASSED|36',
+    'zram0||3.9G|UNKNOWN|',
+    'zram1||3.9G|UNKNOWN|',
+    'zram2||3.9G|UNKNOWN|',
+    'zram3||3.9G|UNKNOWN|',
+    'nvme0n1|AirDisk 128GB SSD|119G|PASSED|39',
+  ].join('\n');
+  const disks=parseSmartDisks(input);
+  assert.deepEqual(disks.map(x=>x.device),['sda','sdb','sdc','sdd','nvme0n1']);
+  assert.equal(disks.at(-1).model,'AirDisk 128GB SSD');
+  assert.equal(disks.at(-1).tempC,39);
+  const css=fs.readFileSync(path.join(import.meta.dirname,'../public/style.css'),'utf8');
+  assert.match(css,/\.diskrow span\{[^}]*white-space:normal/);
 });
