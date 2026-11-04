@@ -32,7 +32,10 @@ function render(data){
     if(c.span>1)article.dataset.span=c.span;
     article.draggable=editMode;
     const heading=node('h2');const icon=node('i','',c.icon||'◇');const title=node('span','',c.title);heading.append(icon,title);
-    const state=node('span','mini-state '+(c.rows.some(r=>r.ok)?'good':'neutral'),c.rows.some(r=>r.ok)?'● ACTIF':'—');
+    const ready=c.rows.filter(r=>r.ok).length;
+    const complete=c.rows.length>0 && ready===c.rows.length;
+    const state=node('span','mini-state '+(complete?'good':'neutral'),complete?'● DONNÉES OK':ready?'◐ PARTIEL':'— INDISPONIBLE');
+    state.title=`${ready}/${c.rows.length} indicateurs disponibles ; ne confirme pas à lui seul la santé du service`;
     heading.append(state);article.append(heading);
     for(const r of c.rows){
       const line=node('div','count-row configurable-row');
