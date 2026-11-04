@@ -9,6 +9,7 @@ on:
       - dashboard.mjs
       - preferences.mjs
       - recordstudio.mjs
+      - recordstudio.mjs
       - public/**
       - scripts/**
       - .github/workflows/native-image.yml
@@ -51,6 +52,29 @@ jobs:
           done
           echo "PabloHFlix image failed startup or /healthz" >&2
           exit 1
+      # The runtime previously crashed despite successful unit tests: a required
+      # .mjs file was not copied by Dockerfile. Validate the complete image first.
+      - name: Smoke test built container before publishing
+        run: |
+          docker build -t pablohflix:smoke .
+          docker run -d --name pablohflix-smoke \
+            -e DASHBOARD_USER=admin \
+            -e DASHBOARD_PASSWORD=smoke-password-strong-123 \
+            -e DASHBOARD_SESSION_SECRET=smoke-session-secret-012345678901234567890 \
+            pablohflix:smoke
+          docker exec pablohflix-smoke node -e '
+            (async()=>{
+              for(let attempt=0;attempt<12;attempt++){
+                try {
+                  const response=await fetch("http://127.0.0.1:3000/healthz",{signal:AbortSignal.timeout(1000)});
+                  if(response.ok){console.log("PabloHFlix runtime OK");return;}
+                }catch{}
+                await new Promise(resolve=>setTimeout(resolve,500));
+              }
+              throw Error("PabloHFlix healthz did not start");
+            })().catch(e=>{console.error(e);process.exit(1)});
+          '
+          docker rm -f pablohflix-smoke
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
