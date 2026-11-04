@@ -30,3 +30,21 @@
 .configurable-card.is-dragging{opacity:.48;border-style:dashed}
 .configurable-card[draggable=true]{cursor:grab}
 @media(max-width:740px){.dashboard-toolbar{align-items:start;flex-wrap:wrap}.dashboard-toolbar-actions{flex-wrap:wrap}.configurable-card[data-span]{grid-column:auto}}
+
+/* v0.4: editable news, shortcuts, top metrics and contextual setup links. */
+.top-metric{padding:7px 13px;display:flex;align-items:center;gap:6px;color:var(--text);white-space:nowrap}
+.top-metric+.top-metric{border-left:1px solid var(--edge)}
+.top-metric:hover{background:var(--shadow)}
+.top-metric b{color:var(--ok);margin-left:4px}
+.help-link{display:inline-block;color:var(--accent);font-size:10px;margin-top:6px}
+.panel-action{margin-left:auto;color:var(--accent);font-size:10px;font-weight:500;letter-spacing:0;white-space:nowrap}
+.rss-group-tabs{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 10px}
+.rss-group-tabs button{background:var(--bg);color:var(--muted);border:1px solid var(--rail);padding:5px 9px;border-radius:5px;font:inherit;font-size:10px;cursor:pointer}
+.rss-group-tabs button.active{border-color:var(--accent);color:var(--accent)}
+.shortcut-section+.shortcut-section{margin-top:14px}
+.shortcut-label{font-size:10px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px}
+.source-item{display:flex;justify-content:space-between;align-items:start;gap:8px;padding:6px 0;font-size:11px;border-bottom:1px solid var(--rail)}
+.source-item:last-child{border-bottom:0}
+.source-item>span:last-child{font-size:10px;text-align:right;font-weight:600}
+.source-ready{color:var(--ok)}.source-error{color:var(--danger)}.source-missing,.source-partial,.source-stale{color:var(--accent)}
+@media(max-width:740px){.top-metric{padding:6px;gap:3px;font-size:10px}.rss-group-tabs{flex-wrap:nowrap;overflow-x:auto}.panel-action{font-size:9px}}

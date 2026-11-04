@@ -45,3 +45,19 @@
 #diagnostic-output{overflow-wrap:anywhere}
 @media(max-width:1100px){.settings-shell{grid-template-columns:180px minmax(0,1fr)}.settings-pane .settings-layout{grid-template-columns:1fr}}
 @media(max-width:740px){.settings-shell{display:block}.settings-sidebar{position:static;flex-direction:row;overflow-x:auto;gap:5px;margin-bottom:12px;padding:6px}.settings-nav{flex:none;padding:9px;font-size:11px}.settings-nav span{white-space:nowrap}.form-two{grid-template-columns:1fr;gap:0}.config-item{align-items:flex-start;flex-wrap:wrap}.config-item .item-actions{width:100%}.settings-summary{gap:6px}.settings-summary>div{padding:10px}.settings-summary b{font-size:25px}.theme-choices{grid-template-columns:1fr}}
+
+/* v0.4: editable groups, RSS/shortcut sources and human-readable troubleshooting. */
+.managed-list,.diagnostic-list{display:flex;flex-direction:column;gap:8px;margin:15px 0}
+.managed-heading{font-size:12px;color:var(--accent);margin:15px 0 2px}
+.management-form{margin:19px 0 0;padding-top:13px;border-top:1px solid var(--rail);max-width:660px}
+.management-form label{display:block;margin-top:12px}
+.setup-code{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.6;border:1px solid var(--rail);border-radius:7px;background:var(--bg);padding:13px;color:var(--ok)}
+.diagnostic-item{border:1px solid var(--rail);border-radius:8px;background:var(--panel);padding:0 12px}
+.diagnostic-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 0;cursor:pointer;font-size:12px}
+.diagnostic-heading span{font-size:11px;text-align:right;white-space:nowrap}
+.diagnostic-body{padding:0 0 13px;font-size:12px;color:var(--muted);line-height:1.5}
+.diagnostic-body p{margin:0 0 8px}.diagnostic-body li{margin:5px 0}
+.diagnostic-body .ui-button{margin:10px 0}
+.source-ready{color:var(--ok)}.source-error{color:var(--danger)}.source-missing,.source-partial,.source-stale{color:var(--accent)}
+.setup-summary-item{display:block;padding:8px 11px;border:1px solid var(--rail);border-radius:5px;margin:6px 0;color:var(--text);font-size:11px}
+.setup-summary-item:hover{border-color:var(--accent)}

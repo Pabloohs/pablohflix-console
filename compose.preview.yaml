@@ -14,11 +14,15 @@ services:
       PORT: "3000"
       DATA_DIR: /app/data
       METRICS_DIR: /app/metrics
+      HOST_VOLUME1_PATH: /app/data
+      HOST_VOLUME2_PATH: /app/volume2-probe
     ports:
       - "192.168.1.200:3030:3000"
     volumes:
       - /volume1/docker/pablohflix-native-preview/data:/app/data
       - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+      # Mount an empty dedicated folder; never mount personal/media contents for disk statistics.
+      - /volume2/pablohflix-probe:/app/volume2-probe:ro
     networks:
       - private_console
       - media_services

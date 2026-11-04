@@ -16,6 +16,9 @@ jobs:
       - run: node --check server.mjs
       - run: node --check integrations.mjs
       - run: node --check dashboard.mjs
+      - run: node --check preferences.mjs
+      - run: node --check public/experience.js
+      - run: node --check public/preferences-settings.js
       - run: node --check public/settings.js
       - run: node --check public/dashboard-cards.js
       - run: node --check public/integrations.js

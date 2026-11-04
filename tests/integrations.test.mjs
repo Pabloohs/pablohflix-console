@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {createIntegrationStore,jellyfinAuthHeaders} from '../integrations.mjs';
+import {createIntegrationStore} from '../integrations.mjs';
 
 const mk = () => fs.mkdtempSync(path.join(os.tmpdir(),'pablo-integrations-'));
 const secret = 'test-session-secret-is-at-least-32-characters-long';
@@ -55,22 +55,23 @@ test('Protection : URI distante, localhost et champs dangereux rejetés', async 
   fs.rmSync(dir,{recursive:true,force:true});
 });
 
-
-test('Jellyfin 12 : API key envoyée par Authorization MediaBrowser et non X-Emby-Token', async () => {
-  const dir=mk();
-  const requests=[];
-  const fetchImpl=async (url, options) => {
-    requests.push({url:String(url),headers:options.headers});
-    return {status:200,ok:true,text:async()=>JSON.stringify([{NowPlayingItem:{Id:'movie'}}])};
-  };
-  try {
-    assert.deepEqual(jellyfinAuthHeaders('example-jellyfin-key'),{Authorization:'MediaBrowser Token="example-jellyfin-key"'});
+test('Pi-hole v6 : mot de passe d’application protégé, session FTL et port HTTP 80 accepté',async()=>{
+  const dir=mk();const calls=[];
+  try{
+    const fetchImpl=async(url,options)=>{
+      calls.push({url:String(url),headers:options.headers,method:options.method||'GET',body:options.body});
+      if(String(url).endsWith('/api/auth'))return {status:200,ok:true,text:async()=>JSON.stringify({session:{sid:'session-test-token'}})};
+      return {status:200,ok:true,text:async()=>JSON.stringify({queries:{total:420,percent_blocked:32}})};
+    };
     const store=createIntegrationStore({dir,secret,fetchImpl});
-    const item=store.create({type:'jellyfin',name:'Cinema',url:'http://192.168.1.200:8096',secret:'test-jellyfin-api-key-123456'});
-    const result=await store.test(item.id);
-    assert.equal(result.ok,true);
-    assert.equal(result.metric,1);
-    assert.equal(requests[0].headers.Authorization,'MediaBrowser Token="test-jellyfin-api-key-123456"');
-    assert.equal(requests[0].headers['X-Emby-Token'],undefined);
-  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+    const item=store.create({type:'pihole',name:'Mon Pi-hole',url:'http://192.168.1.196:80',secret:'secret-from-password',auth:'apiKey'});
+    assert.equal(item.url,'http://192.168.1.196');
+    const tested=await store.test(item.id);
+    assert.equal(tested.ok,true);assert.equal(tested.metric,420);
+    assert.equal(calls[0].method,'POST');
+    assert.equal(calls[0].body,JSON.stringify({password:'secret-from-password'}));
+    assert.equal(calls[1].headers['X-FTL-SID'],'session-test-token');
+    assert.equal(calls[1].headers['X-Api-Key'],undefined);
+    assert.doesNotMatch(JSON.stringify(store.list()),/secret-from-password/);
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

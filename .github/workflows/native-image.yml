@@ -7,6 +7,7 @@ on:
       - server.mjs
       - integrations.mjs
       - dashboard.mjs
+      - preferences.mjs
       - public/**
       - scripts/**
       - .github/workflows/native-image.yml

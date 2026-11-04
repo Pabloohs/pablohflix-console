@@ -13,6 +13,7 @@ export const PRESETS = Object.freeze([
   { type: 'bazarr', label: 'Bazarr', port: 6767, endpoint: '/api/system/status', field: 'version', metricLabel: 'Version Bazarr', auth: 'apiKey' },
   { type: 'recordstudio', label: 'Recordstudio', port: 18080, endpoint: '/api/state', field: 'status', metricLabel: 'Statut', auth: 'basic' },
   { type: 'gluetun', label: 'Gluetun', port: 8000, endpoint: '/v1/vpn/status', field: 'status', metricLabel: 'VPN', auth: 'none' },
+  { type: 'pihole', label: 'Pi-hole v6', port: 80, endpoint: '/api/stats/summary', field: 'queries.total', metricLabel: 'DNS résolus', auth: 'apiKey' },
   { type: 'custom', label: 'Application personnalisée / REST JSON', port: null, endpoint: '/', field: '', metricLabel: 'Valeur API', auth: 'header' },
 ]);
 const TYPES = new Map(PRESETS.map(p => [p.type, p]));
@@ -39,7 +40,10 @@ function normalizeUrl(raw) {
   const url = new URL(value);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('HTTP(S) requis');
   if (url.username || url.password || url.hash || url.search || (url.pathname !== '/' && url.pathname !== '')) throw new Error('Utiliser uniquement l’URL de base (sans chemin ni identifiants)');
-  if (!url.port || Number(url.port) < 1 || Number(url.port) > 65535) throw new Error('Port explicite requis pour la configuration privée');
+  // WHATWG URL strips default :80 and :443; accept them only if explicitly supplied.
+  const authority=value.match(/^https?:\/\/([^/]+)/i)?.[1]||'';
+  const explicitPort=/:([0-9]{1,5})$/.exec(authority)?.[1];
+  if (!explicitPort || Number(explicitPort) < 1 || Number(explicitPort) > 65535) throw new Error('Port explicite requis pour la configuration privée');
   if (isIP(url.hostname) === 4 && (!PRIVATE_IPS.test(url.hostname) || RESERVED_IPS.test(url.hostname))) throw new Error('Adresse réseau non privée ou réservée');
   if (isIP(url.hostname) === 6 && !url.hostname.startsWith('fd')) throw new Error('Adresse IPv6 non privée');
   return url.origin;
@@ -165,7 +169,18 @@ export function createIntegrationStore({dir, secret, fetchImpl = fetch}) {
     await verifyDestination(url);
     const headers={'Accept':'application/json'};
     const secret=decrypt(item.encryptedSecret);
-    if(item.auth==='apiKey') {
+    if(item.type==='pihole' && item.auth==='apiKey'){
+      // Pi-hole v6 does not accept X-Api-Key: use its short-lived FTL session.
+      const loginUrl=new URL(item.url+'/api/auth');
+      await verifyDestination(loginUrl);
+      const login=await fetchImpl(loginUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({password:secret}),redirect:'manual',signal:AbortSignal.timeout(7000)});
+      if(!login.ok)throw Error(`Pi-hole authentification HTTP ${login.status}`);
+      const body=await login.text();
+      if(body.length>8192)throw Error('Réponse auth Pi-hole trop volumineuse');
+      const sid=JSON.parse(body)?.session?.sid;
+      if(typeof sid!=='string'||!sid||/[\r\n]/.test(sid))throw Error('Session Pi-hole absente');
+      headers['X-FTL-SID']=sid;
+    } else if(item.auth==='apiKey') {
       if(item.type==='jellyfin') Object.assign(headers,jellyfinAuthHeaders(secret));
       else headers['X-Api-Key']=secret;
     }

@@ -1,6 +1,6 @@
 FROM node:22.16.0-bookworm-slim
 WORKDIR /app
-COPY --chown=1005:100 server.mjs integrations.mjs dashboard.mjs ./
+COPY --chown=1005:100 server.mjs integrations.mjs dashboard.mjs preferences.mjs ./
 COPY --chown=1005:100 public ./public
 COPY --chown=1005:100 scripts ./scripts
 RUN mkdir -p /app/metrics /app/data && chown -R 1005:100 /app

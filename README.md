@@ -1,111 +1,108 @@
-# PabloHFlix Console Native v0.3 — Settings & cartes modulables
+# PabloHFlix Console — v0.4, configuration guidée
 
-Dashboard privé pour **UGREEN DXP4800 Pro / UGOS Pro**, construit à partir du design natif V1. **Ce projet n'utilise plus Homarr.**
+Dashboard privé UGREEN DXP4800 Pro / UGOS Pro, interface originale **PabloHFlix V1**, sans runtime Homarr. Cette version corrige la difficulté majeure signalée en v0.3 : **les indicateurs indisponibles doivent expliquer comment les activer**.
 
-## Ce qui est nouveau en v0.3
+## Quoi de neuf en v0.4
 
-- **Settings** (`/settings`) : navigation unique « Vue d'ensemble / Dashboard & cartes / Intégrations API / Catalogue de métriques / Apparence / Sauvegardes / Diagnostics ».
-- **Cartes configurables** : conserver, créer, renommer, masquer, dupliquer, supprimer et réordonner les cartes (glisser-déposer ou ↑ ↓), configurer leur taille et leur lien.
-- **Lignes configurables** : ajouter, modifier, supprimer, masquer, dupliquer et réordonner les indicateurs *à l'intérieur de n'importe quelle carte configurable*.
-- **Multi-endpoints par intégration** : une seule connexion Jellyfin et une seule clé API, avec des lignes issues de `/Sessions` et `/Items/Counts`. Les lignes d'une même carte peuvent utiliser plusieurs applications.
-- **Catalogue** : lectures en cours, utilisateurs actifs, transcodages, films, séries, épisodes Jellyfin ; statistiques Radarr, Sonarr, Seerr et Prowlarr.
-- **Intégrations personnalisées REST JSON** : URL, clé API, auth Bearer/Basic/en-tête, endpoint GET, chemin JSON. Exploration des noms de champs renvoyés sans exposer leurs valeurs dans l'explorateur, test du compteur avant validation.
-- **Persistance** : `data/dashboard.json` pour la disposition ; `data/integrations.json` pour les connecteurs et leurs clés chiffrées. Pas besoin de modifier le Compose pour chaque nouveau compteur.
-- **Export/import JSON de disposition** (sans les clés API) et réinitialisation des cartes d'origine.
-- **Thèmes V1** : Terminal Neon, Matrix, Midnight et Minimal Light, mémorisés dans le navigateur.
-- **Compatibilité v0.2** : intégrations existantes conservées et anciens widgets numériques transformés en cartes au premier démarrage de v0.3.
+- **Settings → Sources & configuration** : état réel par source (*connecté / à configurer / périmé / erreur / partiel*), cause probable, solutions et lien d'action. Les cartes Système, Stockage, SMART, Réseau, VPN et le bandeau renvoient vers ces diagnostics.
+- **Settings → Flux RSS & groupes** : créer/renommer/réordonner/supprimer des groupes et des flux RSS/Atom HTTPS, activer/désactiver et tester chaque URL ; afficher les articles par catégorie, avec les erreurs explicites. Flux CERT-FR initial conservé. Lecture limitée à 700 Ko/flux, DNS épinglé et destinations privées refusées.
+- **Settings → Accès rapides & groupes** : tous les liens de la V1 sont importés comme raccourcis modifiables. Ajouter, supprimer, renommer, regrouper et réordonner (flèches).
+- **Settings → Indicateurs du bandeau** : jusqu'à quatre métriques choisies parmi Docker, VPN, alertes, stockage, sources disponibles et actualités.
+- **Settings → Sources affichées** : choisir/réordonner les lignes « État des sources », y compris les nouvelles intégrations API personnalisées.
+- **Mesures de stockage automatiques** : statfs sur le petit dossier dédié du Volume 1 (`/app/data`) et du Volume 2 (`/app/volume2-probe`), sans parcourir les données utilisateurs, en lecture seule. Le collecteur hôte reste une alternative.
+- **Intégrations Gluetun** : associer deux intégrations (Media / Recordstudio), configurer le pays attendu, lire statut/pays/IP par API depuis le web. Nécessite un contrôle Gluetun accessible depuis les réseaux Docker autorisés.
+- **Pi-hole v6** : nouveau connecteur web ; utilise le mot de passe d'application pour créer une session FTL et lire les métriques. Pas de mot de passe en clair retourné au navigateur.
+- **Onboarding** dans Settings → Vue d'ensemble, avec indicateurs « opérationnel / à configurer » ; export/import des groupes et préférences en plus de l'export des cartes.
+- Les cartes et intégrations v0.3 restent compatibles. **Aucune migration destructive** : `data/dashboard.json`, `data/integrations.json` ne sont pas supprimés/modifiés par la nouvelle configuration.
 
-### Exemple : films disponibles sur la carte Jellyfin
+## Après déploiement : parcours conseillé
 
-1. Ouvrir `http://192.168.1.200:3030/settings` puis **Dashboard & cartes**.
-2. Sélectionner **JELLYFIN → Modifier → Ajouter une ligne**.
-3. Choisir **Intégration API** puis la connexion **Jellyfin** existante.
-4. Dans « Indicateur prédéfini », sélectionner **Films disponibles**. Cela préremplit `GET /Items/Counts`, champ `MovieCount`.
-5. Cliquer **Tester la valeur**, puis **Enregistrer l'indicateur**.
-6. Utiliser ↑ ↓ ou le glisser-déposer pour placer les films avant les utilisateurs actifs, par exemple.
+1. Ouvrir `http://192.168.1.200:3030/settings` → **Sources & configuration**. Lire les états réels avant toute modification réseau.
+2. **Stockage** : le Volume 1 doit apparaître automatiquement si `/app/data` est monté sur le Volume 1. Pour le Volume 2, suivre le montage du petit répertoire dédié ci-dessous.
+3. **Docker / SMART** : activer le collecteur UGOS si l'état est « À configurer ». SMART ne peut pas être obtenu sans permissions depuis un conteneur applicatif non privilégié.
+4. **Réseau & VPN** : connecter le service Gluetun via Intégrations API, puis attribuer la bonne intégration à Media / Recordstudio dans Sources & configuration. En cas de panne, utiliser « Tester » dans Intégrations API.
+5. **Flux RSS & groupes** : tester CERT-FR ; vérifier que le NAS sort en HTTPS, puis ajouter d'autres flux dans des groupes dédiés.
+6. **Accès rapides** : remplacer les URLs d'exemple par les vraies adresses de tes applications et créer des groupes.
+7. **Bandeau / État des sources** : choisir les indicateurs à voir en haut, les sources et leur ordre. Ces réglages restent persistants.
 
-Pour les séries : `SeriesCount`. Pour les épisodes : `EpisodeCount`. Une **seule intégration Jellyfin** suffit pour les trois.
+## Mise à jour Docker UGOS (UID 1005 / GID 100)
 
-### Éditeur d'indicateurs
-
-- **Source interne** : mesure disponible dans `/api/status` (Jellyfin, media-arr, VPN, volumes NAS).
-- **Source API** : choisir une intégration existante, puis un endpoint `GET` et un champ JSON. Pour une réponse de tableau, utiliser la transformation `Longueur du tableau` ou les transformations Jellyfin « Sessions en lecture », « Transcodages », « Utilisateurs en lecture ».
-- **Formats** : valeur automatique, nombre, pourcentage, texte, Gio, durée. Suffixe facultatif.
-- **Indisponibilité** : affiche `—` avec la raison en survol, sans inventer un zéro.
-
-## Installation / mise à jour UGOS Pro
-
-Le déploiement de référence est [`compose.preview.yaml`](compose.preview.yaml), accessible uniquement sur `192.168.1.200:3030` pour le LAN/Tailscale.
-
-**Important :** l'utilisateur de conteneur confirmé est **UID 1005, GID 100**.
+Image : `ghcr.io/pabloohs/pablohflix-console:native-preview`. Projet `pablohflix-native-preview`, port **3030**, sans modifier V1 sur 3010, ni Homarr V2 sur 3020. Conserver exactement le même `.env`, notamment `DASHBOARD_SESSION_SECRET`, et le volume persistant `data`.
 
 ```bash
-sudo mkdir -p /volume1/docker/pablohflix-native-preview/data
+# Sauvegarde avant la mise à jour (le contenu contient des secrets chiffrés)
+sudo tar -czf /volume1/docker/pablohflix-native-preview-backup-$(date +%Y%m%d).tgz -C /volume1/docker/pablohflix-native-preview data .env
+# Dossier dédié pour lire l'espace du Volume 2, sans exposer les enregistrements
+sudo mkdir -p /volume2/pablohflix-probe
+# UID propriétaire du conteneur
 sudo chown -R 1005:100 /volume1/docker/pablohflix-native-preview/data
-sudo chmod 750 /volume1/docker/pablohflix-native-preview/data
-```
-
-Créer `/volume1/docker/pablohflix-native-preview/.env` avec les paramètres de `.env.example` : `DASHBOARD_USER`, `DASHBOARD_PASSWORD` (≥14 caractères), `DASHBOARD_SESSION_SECRET` (≥32 caractères), `COOKIE_SECURE=0` pour l'HTTP LAN. Conserver **la clé de session déjà existante** à chaque mise à jour et assurer les permissions 600 sur ce fichier. En HTTPS derrière un proxy sécurisé, configurer `COOKIE_SECURE=1`.
-
-**Mise à jour d'un conteneur v0.2 déjà fonctionnel :**
-
-```bash
+# Télécharger l'image corrigée
 sudo docker pull ghcr.io/pabloohs/pablohflix-console:native-preview
 ```
 
-Puis recréer/redéployer **uniquement** le projet `pablohflix-native-preview` depuis UGOS Docker, en conservant les volumes et les secrets. Le simple « redémarrer » ne recharge pas une image.
+Dans le Compose UGOS, conserver les montages existants et ajouter uniquement :
 
-- Aucune action sur les conteneurs V1 `3010`, Homarr V2 `3020`, `recordstudio`, Jellyfin ou `media-arr`.
-- Les réseaux externes `media_services` et `jellyfin_default` dans le Compose sont des **exemples à vérifier** via `docker network ls` et `docker inspect` avant un déploiement initial. Ne pas créer des réseaux vides portant ces noms. Utiliser les réseaux réellement partagés avec les services pour des URLs comme `http://jellyfin:8096`.
-- Le volume `/volume1/docker/nas-dashboard/metrics` doit être disponible pour les métriques système héritées de V1 ; sinon supprimer temporairement ce montage, et accepter des indicateurs hôte indisponibles.
+```yaml
+volumes:
+  - /volume1/docker/pablohflix-native-preview/data:/app/data
+  - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+  - /volume2/pablohflix-probe:/app/volume2-probe:ro
+```
 
-### Sauvegarde avant mise à jour
+**Note** : ce fragment `volumes:` fait partie du service `console`, pas du niveau racine. Voir [`compose.preview.yaml`](compose.preview.yaml) pour le Compose complet. Les réseaux `media_services` et `jellyfin_default` restent **à vérifier** sur ton NAS avec `docker network ls` : ne les crée pas à l'aveugle. Après `docker pull`, **recréer** le conteneur via UGOS Docker, sans supprimer `data` ni `.env` ; un simple redémarrage conserve l'ancienne image.
 
-Sauvegarder **ensemble** :
-
-1. `/volume1/docker/pablohflix-native-preview/data/`, contenant les intégrations chiffrées et la nouvelle disposition.
-2. La valeur de `DASHBOARD_SESSION_SECRET` contenue dans `.env`, indispensable au déchiffrement des clés API.
-
-L'export depuis l'onglet « Sauvegardes » ne contient **pas** les clés API et ne remplace pas une sauvegarde complète de `data/`.
-
-### Vérification
+Vérifier :
 
 ```bash
+sudo docker ps --filter name=pablohflix-native-preview
 sudo docker logs --tail 80 pablohflix-native-preview
 curl -f http://192.168.1.200:3030/healthz
 ```
 
-La route `/settings` est protégée par la même connexion administrateur que le dashboard. L'ancien lien `/integrations` redirige vers `/settings?tab=integrations`.
+## Pourquoi Docker et SMART nécessitent un collecteur hôte
 
-## Sécurité et limites
+Nous refusons volontairement de monter `docker.sock` dans le dashboard : même en lecture seule, ce socket peut donner des privilèges dangereux. Les informations Docker / SMART doivent donc venir du **script local, en lecture seule** [`scripts/collect-nas.sh`](scripts/collect-nas.sh) :
 
-- Connexion par session HTTP-only, SameSite Strict ; les commandes de modification vérifient l'Origin du navigateur.
-- Clés API chiffrées sur disque (AES-256-GCM) avec `DASHBOARD_SESSION_SECRET`, jamais renvoyées en clair par les endpoints de gestion.
-- Les appels d'API sont effectués par le **backend** du dashboard, pas par le navigateur ; les destinations doivent être privées, les redirections sont interdites. Pas de socket Docker et pas d'accès Internet public exposé.
-- La console utilise des intégrations **GET JSON en lecture seule** : pas d'actions destructives, de OAuth ou de websockets arbitraires. Les graphiques historiques et les permissions multi-comptes restent prévus pour plus tard.
-- Les cartes à indicateurs Jellyfin / Media-arr / Recordstudio et les nouvelles cartes sont entièrement éditables. Les panneaux V1 spécialisés « Système », « Stockage », « Disques », « Actualité cyber », « Accès rapides » et « Réseau / VPN » conservent pour l'instant leurs présentations spécialisées : ils ne sont **pas encore** gérés ligne par ligne dans Settings.
-- La configuration des endpoints est réservée à un administrateur de confiance sur le réseau privé ; pour une exposition sur Internet, un audit supplémentaire du réseau/API et une authentification plus forte seraient nécessaires.
+1. Télécharger ou copier le script depuis ce dépôt après l'avoir examiné, puis le placer par exemple dans `/volume1/docker/pablohflix-native-preview/collect-nas.sh`.
+2. Exécuter une fois en SSH avec les droits nécessaires : `sudo sh /volume1/docker/pablohflix-native-preview/collect-nas.sh`.
+3. Vérifier le dossier `/volume1/docker/nas-dashboard/metrics` et en particulier `updated_at`, `docker.psv`, `volumes.df`, `disks.psv`.
+4. Dans le planificateur de tâches UGOS, programmer l'exécution **chaque minute**. Le SMART est interrogé **au plus une fois par heure**, et `smartctl` doit être disponible sur l'hôte pour obtenir la santé/température.
+5. Settings → Sources indique si le collecteur est absent, périmé ou actif. Le dossier de métriques est monté **en lecture seule** dans le conteneur.
 
-## Développement / tests
+Sans ce collecteur, les lignes Docker/SMART restent « À configurer » et non « 0 ». Le stockage peut néanmoins fonctionner via `statfs` avec les montages dédiés.
 
-Application Node 22 sans dépendances npm :
+## Architecture / API
+
+- `server.mjs` : API de statut, login, diagnostics, liens, RSS et bandeau.
+- `preferences.mjs` : configuration persistante de l'expérience, validation des URLs et lecture RSS/Atom.
+- `integrations.mjs` : connexions API et secrets chiffrés ; Pi-hole v6 avec session FTL.
+- `dashboard.mjs` : cartes et lignes configurables, sources multi-endpoints.
+- `public/preferences-settings.js` : formulaires Settings (RSS, liens, VPN, bandeau, ressources).
+- `public/experience.js` : rendu du bandeau, RSS groupés, liens groupés et sources du dashboard.
+- `scripts/collect-nas.sh` : métriques hôte expurgées et non privilégiées pour la console.
+
+**Fichiers persistants** : `data/integrations.json` (secrets chiffrés), `data/dashboard.json` (cartes/lignes), `data/experience.json` (groupes RSS, raccourcis, indicateurs, source VPN). Tous doivent être sauvegardés avec la clé `DASHBOARD_SESSION_SECRET` dans `.env`. L'export JSON de l'interface ne contient **jamais** les secrets.
+
+**Sécurité** : service disponible sur l'adresse LAN du NAS, LAN/Tailscale uniquement, sans port WAN. API réservée à la session administrateur. RSS : HTTPS seulement, refus des destinations privées, validation DNS et TLS, limite de réponse, délai et nombre de redirections. Raccourcis : liens HTTP(S) validés. Intégrations : secrets AES-256-GCM sur disque, pas de socket Docker. Actions modifiant l'état soumises à la vérification Origin.
+
+## Qualité et limites
 
 ```bash
 node --check server.mjs
-node --check dashboard.mjs
-node --check integrations.mjs
+node --check preferences.mjs
+node --check public/preferences-settings.js
+node --check public/experience.js
 node --test tests/*.test.mjs
 ```
 
-Architecture :
-- `server.mjs` : API et authentification ; `integrations.mjs` : connecteurs, secrets et requêtes réseau.
-- `dashboard.mjs` : disposition persistante, validation, templates et métriques.
-- `public/dashboard-cards.js` : rendu des cartes depuis l'API, mode de réorganisation.
-- `public/settings.html`, `public/settings.js`, `public/settings.css` : Settings complets.
-- `public/index.html`, `public/style.css`, `public/app.js` : base visuelle V1 préservée.
-- `tests/` : tests API, migration, multi-endpoints, métriques et sécurité.
+- Les règles réseau UGOS, la joignabilité réelle des conteneurs, la disponibilité de `smartctl` et la planification du collecteur doivent être validées **sur le NAS** ; le code ne peut pas les vérifier à distance.
+- Les indicateurs du bandeau restent limités à six métriques prédéfinies (jusqu'à quatre affichées). Les panneaux matériels spécialisés Système/Stockage/Disques/VPN sont guidés et configurables par source, mais pas encore totalement composables ligne par ligne comme les cartes de services.
+- Le RSS ne prend pas en charge les flux derrière authentification ; HTTPS RSS 2.0 et Atom standards sont pris en charge.
+- L'interface web a été testée automatiquement côté API et modèle ; son rendu final doit être vérifié après déploiement sur UGOS et sur iPhone.
 
-### Archives de l'ancien fork Homarr
+## Sauvegardes GitHub
 
-- `archive/homarr-upstream-dev-2026-11-03` : ancien `dev` Homarr.
-- `archive/pablohflix-homarr-v2-2026-11-03` : ancienne adaptation Homarr PabloHFlix V2.
+- `archive/homarr-upstream-dev-2026-11-03` — Homarr amont.
+- `archive/pablohflix-homarr-v2-2026-11-03` — ancienne adaptation Homarr.
+- `archive/pablohflix-native-v0.2-before-settings-2026-11-04` — v0.2 native.
+- À créer avant publication v0.4 : archive de la v0.3 sur la branche actuelle.

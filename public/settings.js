@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e;};
 const small=(label,fn,extra='')=>{const b=node('button','small-button '+extra,label);b.type='button';b.addEventListener('click',fn);return b;};
-const validTabs=['home','dashboard','integrations','metrics','appearance','backup','diagnostics'];
+const validTabs=['home','dashboard','integrations','feeds','shortcuts','overview','sources','metrics','appearance','backup','diagnostics'];
 const themes=['terminal','matrix','midnight','minimal'];
 let tab='home', catalog=[],templates=[],integrations=[],cards=[],selectedCardId=null,selectedRowId=null,editingIntegrationId=null;
 const notify=(message,bad=false)=>{const el=$('notice');el.hidden=false;el.className='notice '+(bad?'bad':'ok');el.textContent=message;el.scrollIntoView({behavior:'smooth',block:'nearest'});};
@@ -31,6 +31,7 @@ function showTab(next,updateUrl=true){
   document.querySelectorAll('.settings-nav').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab);b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false');});
   if(updateUrl){const url=new URL(location.href);url.searchParams.set('tab',tab);url.searchParams.delete('card');history.replaceState(null,'',url);}
   if(tab==='diagnostics')renderDiagnostics();
+  if(tab==='sources')window.dispatchEvent(new Event('pablo:show-sources'));
 }
 document.querySelectorAll('.settings-nav').forEach(b=>b.addEventListener('click',()=>{clearNotice();showTab(b.dataset.tab);}));
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.go)));
@@ -59,7 +60,7 @@ function syncAuth(){
 }
 function choosePreset(){
   const preset=currentPreset();if(!preset)return;
-  const dns={jellyfin:'jellyfin',radarr:'radarr',sonarr:'sonarr',seerr:'seerr',prowlarr:'prowlarr',bazarr:'bazarr'};
+  const dns={jellyfin:'jellyfin',radarr:'radarr',sonarr:'sonarr',seerr:'seerr',prowlarr:'prowlarr',bazarr:'bazarr',pihole:'pihole'};
   $('integration-name').value=preset.label;
   $('integration-url').value=preset.port?`http://${dns[preset.type]||'192.168.1.200'}:${preset.port}`:'';
   $('integration-endpoint').value=preset.endpoint;$('integration-field').value=preset.field;

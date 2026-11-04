@@ -21,7 +21,7 @@
     txt('cpu',val(sys.cpu,' %'));txt('ram',val(sys.ram,' %'));txt('uptime',typeof sys.uptimeSeconds==='number'?`${Math.floor(sys.uptimeSeconds/86400)} j ${Math.floor(sys.uptimeSeconds%86400/3600)} h`:'—');pct('cpu-bar',sys.cpu);pct('ram-bar',sys.ram);
     for(const [key,prefix] of [['volume1','v1'],['volume2','v2']]){const v=vol[key]||{};txt(prefix+'-percent',val(v.usedPercent,' %'));txt(prefix+'-size',v.totalBytes!=null?`${bytes(v.totalBytes-v.freeBytes)} / ${bytes(v.totalBytes)}`:'Mesure en attente');pct(prefix+'-bar',v.usedPercent);}
     txt('record-free',val(vol.volume2?.freePercent,' %'));pct('record-free-bar',vol.volume2?.freePercent);
-    txt('docker-overview',docker.ok?`${docker.up}/${docker.total}`:'—/—');
+
     const disksList=$('disks-list');disksList.replaceChildren();
     if(disks.length===0){const p=document.createElement('p');p.className='muted';p.textContent='En attente de l’inventaire SMART';disksList.append(p);}
     else disks.forEach(d=>{const row=document.createElement('div');row.className='diskrow';const span=document.createElement('span');span.textContent=`${d.device} · ${d.model||d.size}`;span.title=d.model;const temp=document.createElement('b');temp.textContent=d.tempC==null?'—':`${d.tempC} °C`;const health=document.createElement('strong');health.textContent=d.health==='PASSED'?'OK':d.health==='FAILED'?'ALERTE':'?';health.className=d.health==='PASSED'?'good-text':d.health==='FAILED'?'bad-text':'subdued';row.append(span,temp,health);disksList.append(row);});
@@ -31,23 +31,19 @@
     for(const [key,prefix] of [['vpnMedia','vpn-media'],['vpnRecord','vpn-record']]){const v=data[key]||{};const running=v.ok&&v.state==='running';const match=v.match===false?false:null;dot(prefix+'-dot',v.ok?Boolean(running)&&match!==false:null);txt(prefix+'-state',v.ok?(running?'RUNNING':'ARRÊTÉ'):'—');txt(prefix+'-detail',v.ok?`${v.country||'Pays non mesuré'} · ${v.ip||'IP inconnue'}${v.match===false?' · PAYS INCORRECT':''}`:prefix==='vpn-record'?'CH attendu · API non connectée':'Pays / IP non vérifiés');}
     const vm=data.vpnMedia,vr=data.vpnRecord;
     const vpnOn=[vm,vr].filter(x=>x?.ok&&x.state==='running').length;const vpnCount=[vm,vr].filter(x=>x?.ok).length;
-    txt('vpn-overview',vpnCount?`${vpnOn}/2`:'—/2');txt('record-country',vr?.ok?vr.country||'Inconnu':'—');
-    const newsList=$('news-list');newsList.replaceChildren();
-    if(!data.news?.length){const p=document.createElement('p');p.className='muted';p.textContent='Flux CERT-FR indisponible ou vide';newsList.append(p);}
-    else data.news.forEach(item=>{if(!item.link?.startsWith('https://'))return;const a=document.createElement('a');a.className='news-item';a.href=item.link;a.target='_blank';a.rel='noopener noreferrer';const sq=document.createElement('span');sq.textContent='■';sq.className='pink';const title=document.createElement('span');title.textContent=item.title;const source=document.createElement('small');source.textContent=item.source||'CERT-FR';a.append(sq,title,source);newsList.append(a);});
-    txt('source-jelly',j.ok?'OK':'À CONFIGURER / ERREUR');txt('source-arr',r.ok&&s.ok?'OK':'À CONFIGURER / ERREUR');txt('source-probe',docker.ok?'OK':'NON COLLECTÉ');txt('source-pihole',data.pihole?.ok?'OK':'NON CONNECTÉ');txt('probe-age',data.probeAt?new Date(data.probeAt).toLocaleTimeString('fr-FR'):'—');
+txt('record-country',vr?.ok?vr.country||'Inconnu':'—');
     txt('updated',new Date(data.timestamp).toLocaleTimeString('fr-FR'));
     // Only proven failures are alerts. Unknown/absent connectors are not treated as healthy.
     const down=docker.ok?docker.unhealthy:0;
     const badVpn=[vm,vr].some(v=>v?.ok&&(v.state!=='running'||v.match===false));
     const warnings=(down||0)+(badVpn?1:0);
-    txt('alert-overview',docker.ok||vpnCount?String(warnings):'—');
+    window.dispatchEvent(new CustomEvent('pablo:status',{detail:data}));
     const state=$('global-state');
     if(warnings>0){state.textContent='● ATTENTION';state.className='pill warn';}
     else if(j.ok&&r.ok&&s.ok&&docker.ok&&vpnCount===2){state.textContent='● SUPERVISION ACTIVE';state.className='pill good';}
     else {state.textContent='● SUPERVISION PARTIELLE';state.className='pill neutral';}
   }
   let busy=false;
-  async function refresh(){if(busy)return;busy=true;try{const res=await fetch('/api/status',{cache:'no-store'});if(res.status===401){location.replace('/login');return;}if(!res.ok)throw Error('réponse '+res.status);render(await res.json());}catch(e){txt('updated','Connexion perdue');const state=$('global-state');state.textContent='● DONNÉES INDISPONIBLES';state.className='pill warn';}finally{busy=false;}}
+  async function refresh(){if(busy)return;busy=true;try{const res=await fetch('/api/status',{cache:'no-store'});if(res.status===401){location.replace('/login');return;}if(!res.ok)throw Error('réponse '+res.status);render(await res.json());}catch(e){txt('updated','Connexion perdue');const state=$('global-state');state.textContent='● DONNÉES INDISPONIBLES — OUVRIR DIAGNOSTIC';state.className='pill warn';window.dispatchEvent(new CustomEvent('pablo:status-error',{detail:String(e.message||e)}));}finally{busy=false;}}
   $('refresh')?.addEventListener('click',refresh);refresh();setInterval(refresh,30000);
 })();
