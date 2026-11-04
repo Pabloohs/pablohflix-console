@@ -71,7 +71,7 @@ function collectHost() {
   if(previousCpu && snapshot.total>previousCpu.total) cpu=Math.max(0,Math.min(100,Math.round(100*(1-(snapshot.idle-previousCpu.idle)/(snapshot.total-previousCpu.total)))));
   previousCpu=snapshot;
   const memTotal=os.totalmem(),memFree=os.freemem();
-  return {cpu,ram: memTotal?Math.round(100*(1-memFree/memTotal)):null,ramBytes:memTotal,uptimeSeconds:Math.floor(os.uptime()), note:'Mesures OS indicatives en conteneur ; valider avec UGOS/Beszel'};
+  return {cpu,ram: memTotal?Math.round(100*(1-memFree/memTotal)):null,ramBytes:memTotal,uptimeSeconds:Math.floor(os.uptime()), note:'Mesures via les API système Node.js : charge CPU, mémoire et uptime'};
 }
 function mountedVolumeStats(mount) {
   // statfs is a read-only syscall. The bind mount is a tiny empty directory on the respective volume,

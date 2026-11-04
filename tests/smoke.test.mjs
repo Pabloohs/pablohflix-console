@@ -44,3 +44,10 @@ test('authentification, session et API sécurisées',async()=>{
     r=await fetch(base+'/api/status',{headers:{cookie:sess}});assert.equal(r.status,401);
   }finally{server.close();}
 });
+
+
+test('Libellé système : ne présente plus les métriques disponibles comme non confirmées', () => {
+  const html=fs.readFileSync(path.join(import.meta.dirname,'../public/index.html'),'utf8');
+  assert.match(html,/Mesures système du NAS · actualisation toutes les 30 s/);
+  assert.doesNotMatch(html,/hôte à confirmer/);
+});
