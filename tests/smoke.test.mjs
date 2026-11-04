@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { once } from 'node:events';
+import vm from 'node:vm';
 process.env.NODE_ENV='test';
 process.env.DASHBOARD_USER='admin';
 process.env.DASHBOARD_PASSWORD='test-password-is-long-enough';
@@ -109,4 +110,54 @@ test('VPN Gluetun : endpoint statut inaccessible reste en erreur',async()=>{
   assert.equal(result.ok,false);
   assert.equal(result.configured,true);
   assert.match(result.reason,/401/);
+});
+
+
+test('Rendu accueil : aucune erreur lorsque les APIs sont disponibles',async()=>{
+  const nodes=new Map(),errors=[],events=[];
+  const element=id=>{
+    if(!nodes.has(id))nodes.set(id,{
+      textContent:'',className:'',title:'',value:'',style:{},dataset:{},
+      children:[],replaceChildren(...parts){this.children=parts;},
+      append(...parts){this.children.push(...parts);},
+      addEventListener(){},setAttribute(){}
+    });
+    return nodes.get(id);
+  };
+  const data={
+    timestamp:'2026-11-04T04:30:00Z',
+    system:{cpu:10,ram:25,uptimeSeconds:7200},
+    docker:{ok:true,up:12,total:12,unhealthy:0},
+    disks:[],
+    volumes:{volume1:{totalBytes:1000000,freeBytes:200000,usedPercent:80},
+      volume2:{totalBytes:1000000,freeBytes:990000,usedPercent:1,freePercent:99}},
+    jellyfin:{ok:true,streams:0,transcodes:0,users:0},
+    radarr:{ok:true,queue:0,missing:0},
+    sonarr:{ok:true,queue:0,missing:0},
+    seerr:{ok:true,pending:0},
+    vpnMedia:{ok:true,state:'running',country:'FR'},
+    vpnRecord:{ok:true,state:'running',country:null,partial:true,
+      configured:true,reason:'Pays de sortie non vérifiable via l’API'}
+  };
+  const context={
+    document:{
+      body:{dataset:{}},
+      getElementById:id=>id==='login-form'?null:element(id),
+      createElement:tag=>element('created-'+tag)
+    },
+    localStorage:{getItem:()=>null,setItem(){}},
+    window:{dispatchEvent:e=>events.push(e),addEventListener(){}},
+    CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts.detail;}},
+    fetch:async()=>({ok:true,status:200,json:async()=>data}),
+    setInterval(){},
+    console:{error:e=>errors.push(e)}
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(import.meta.dirname,'../public/app.js'),'utf8'),
+    context,{filename:'public/app.js'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(element('global-state').textContent,'● SUPERVISION ACTIVE');
+  assert.equal(element('vpn-media-state').textContent,'RUNNING');
+  assert.equal(element('vpn-record-state').textContent,'RUNNING');
+  assert.equal(events.some(e=>e.type==='pablo:status'),true);
+  assert.deepEqual(errors,[]);
 });
