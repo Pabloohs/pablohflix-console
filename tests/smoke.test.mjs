@@ -10,7 +10,7 @@ process.env.DASHBOARD_PASSWORD='test-password-is-long-enough';
 process.env.DASHBOARD_SESSION_SECRET='test-secret-012345678901234567890123456789';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pablo-test-'));
 process.env.METRICS_DIR=dir;
-const {server,collectSnapshot,safeEqual,decodeXml,parseSmartDisks}=await import('../server.mjs');
+const {server,collectSnapshot,safeEqual,decodeXml,parseSmartDisks,readVpnFromIntegration}=await import('../server.mjs');
 
 test('comparaison protégée et nettoyage XML',()=>{
   assert.equal(safeEqual('abcdef','abcdef'),true);
@@ -71,4 +71,42 @@ test('SMART : zram exclu, modèles physiques et NVMe complets',()=>{
   assert.equal(disks.at(-1).tempC,39);
   const css=fs.readFileSync(path.join(import.meta.dirname,'../public/style.css'),'utf8');
   assert.match(css,/\.diskrow span\{[^}]*white-space:normal/);
+});
+
+
+test('VPN Gluetun : statut visible même si le second endpoint IP est refusé',async()=>{
+  const fake={queryData:async(_id,endpoint)=>{
+    if(endpoint==='/v1/vpn/status')return {status:'running'};
+    throw Error('API HTTP 403');
+  }};
+  const result=await readVpnFromIntegration(fake,'media-id','CH');
+  assert.equal(result.ok,true);
+  assert.equal(result.state,'running');
+  assert.equal(result.partial,true);
+  assert.equal(result.match,null);
+  assert.equal(result.ip,null);
+  assert.match(result.reason,/403/);
+});
+
+test('VPN Gluetun : pays vérifié quand la source le retourne',async()=>{
+  const fake={queryData:async(_id,endpoint)=>{
+    if(endpoint==='/v1/vpn/status')return {status:'running'};
+    return {public_ip:'198.19.0.1',country_code:'CH'};
+  }};
+  const result=await readVpnFromIntegration(fake,'record-id','CH');
+  assert.equal(result.ok,true);
+  assert.equal(result.partial,false);
+  assert.equal(result.match,true);
+  assert.equal(result.country,'CH');
+});
+
+test('VPN Gluetun : endpoint statut inaccessible reste en erreur',async()=>{
+  const fake={queryData:async(_id,endpoint)=>{
+    if(endpoint==='/v1/vpn/status')throw Error('API HTTP 401');
+    return {public_ip:'198.19.0.1'};
+  }};
+  const result=await readVpnFromIntegration(fake,'record-id','CH');
+  assert.equal(result.ok,false);
+  assert.equal(result.configured,true);
+  assert.match(result.reason,/401/);
 });
