@@ -27,6 +27,7 @@ services:
       - private_console
       - media_services
       - jellyfin_default
+      - recordstudio_default  # API VPN du projet recordstudio
     read_only: true
     tmpfs:
       - /tmp:rw,nosuid,nodev,noexec,size=16m
@@ -40,4 +41,6 @@ networks:
   media_services:
     external: true
   jellyfin_default:
+    external: true
+  recordstudio_default:
     external: true
