@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {createPreferenceStore,createFeedReader,parseFeed,downloadFeed} from '../preferences.mjs';
+import {createPreferenceStore,createFeedReader,parseFeed,downloadFeed,pinnedIpv4Lookup} from '../preferences.mjs';
+import net from 'node:net';
+import {once} from 'node:events';
 
 const makeDir=()=>fs.mkdtempSync(path.join(os.tmpdir(),'pablo-experience-'));
 test('sources RSS, raccourcis, bandeau et VPN sauvegardés et validés',()=>{
@@ -59,4 +61,31 @@ test('RSS : cache, erreurs explicites et conservation des dernières entrées',a
 test('RSS HTTP client refuse les hôtes privés avant ouverture de connexion',async()=>{
   await assert.rejects(downloadFeed('https://127.0.0.1/rss.xml'),/privé|autorisé/i);
   await assert.rejects(downloadFeed('https://192.168.1.200/rss.xml'),/privé|autorisé/i);
+});
+
+
+test('RSS : DNS pinning compatible avec Node 22 autoSelectFamily (all:true)', async () => {
+  const pinned=pinnedIpv4Lookup('127.0.0.1');
+  pinned('rss.example',{all:true},(err,addresses)=>{
+    assert.equal(err,null);
+    assert.deepEqual(addresses,[{address:'127.0.0.1',family:4}]);
+  });
+  pinned('rss.example',{all:false},(err,ip,family)=>{
+    assert.equal(err,null);
+    assert.equal(ip,'127.0.0.1');
+    assert.equal(family,4);
+  });
+  const server=net.createServer(socket=>socket.end());
+  server.listen(0,'127.0.0.1');
+  await once(server,'listening');
+  try {
+    const socket=net.connect({
+      host:'rss.example',port:server.address().port,autoSelectFamily:true,
+      lookup:pinned
+    });
+    await once(socket,'connect');
+    socket.destroy();
+  } finally {
+    server.close();
+  }
 });

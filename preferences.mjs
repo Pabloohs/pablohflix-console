@@ -101,6 +101,15 @@ function publicIPv4(ip){
   if(a===0||a===10||a===127||a>=224||a===169&&b===254||a===172&&b>=16&&b<=31||a===192&&b===168||a===100&&b>=64&&b<=127||a===198&&b>=18&&b<=19||a===192&&b===0&&c===0||a===192&&b===0&&c===2||a===198&&b===51&&c===100||a===203&&b===0&&c===113||a===192&&b===88&&c===99)return false;
   return d>=0;
 }
+// Node 22 may request lookup({all:true}) when auto-selecting address families.
+// Its callback must then receive [{address, family}], not a bare IP string.
+export function pinnedIpv4Lookup(ip) {
+  return (_hostname, options, callback) => {
+    if (options?.all) callback(null, [{address:ip, family:4}]);
+    else callback(null, ip, 4);
+  };
+}
+
 export async function downloadFeed(url,redirects=0){
   const parsed=new URL(validWebUrl(url,{rss:true}));
   const addrs=await lookup(parsed.hostname,{family:4,all:true});
@@ -108,7 +117,7 @@ export async function downloadFeed(url,redirects=0){
   // Pin DNS for this request to prevent DNS rebinding. TLS still validates the original hostname.
   const pinned=addrs[0].address;
   return await new Promise((resolve,reject)=>{
-    const req=https.request(parsed,{method:'GET',lookup:(_host,_opts,callback)=>callback(null,pinned,4),timeout:7500,headers:{'Accept':'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9','User-Agent':'PabloHFlixConsole/0.4 (RSS reader)','Accept-Encoding':'identity'}},res=>{
+    const req=https.request(parsed,{method:'GET',lookup:pinnedIpv4Lookup(pinned),timeout:7500,headers:{'Accept':'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9','User-Agent':'PabloHFlixConsole/0.4 (RSS reader)','Accept-Encoding':'identity'}},res=>{
       if(res.statusCode>=300&&res.statusCode<400 && res.headers.location){
         res.resume();
         if(redirects>=2){reject(Error('Trop de redirections RSS'));return;}
