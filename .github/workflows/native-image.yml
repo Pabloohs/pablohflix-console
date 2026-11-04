@@ -8,6 +8,7 @@ on:
       - integrations.mjs
       - dashboard.mjs
       - preferences.mjs
+      - recordstudio.mjs
       - public/**
       - scripts/**
       - .github/workflows/native-image.yml
@@ -29,6 +30,27 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Exercise the actual runtime image before publishing it to the NAS.
+      # Unit tests run from the checkout and cannot detect missing COPY sources.
+      - name: Smoke test Docker image boot and health endpoint
+        run: |
+          set -euo pipefail
+          docker build --tag pablohflix-smoke:ci .
+          docker run --detach --name pablohflix-smoke \
+            -e DASHBOARD_USER=admin \
+            -e DASHBOARD_PASSWORD=test-password-is-long-enough \
+            -e DASHBOARD_SESSION_SECRET=test-secret-012345678901234567890123456789 \
+            -p 127.0.0.1:13000:3000 pablohflix-smoke:ci
+          trap 'docker logs pablohflix-smoke; docker rm --force pablohflix-smoke' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --silent --show-error --fail --max-time 2 http://127.0.0.1:13000/healthz; then
+              echo "PabloHFlix image boots and /healthz responds"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "PabloHFlix image failed startup or /healthz" >&2
+          exit 1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
