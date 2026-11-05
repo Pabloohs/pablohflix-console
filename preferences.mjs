@@ -5,6 +5,7 @@ import https from 'node:https';
 import {lookup} from 'node:dns/promises';
 import {isIP} from 'node:net';
 
+const NAS_BROWSER_HOST = (process.env.NAS_BROWSER_HOST || 'nas.local').trim();
 const guid = () => crypto.randomUUID();
 const copy = value => JSON.parse(JSON.stringify(value));
 const safeLabel = (value, max=70) => {
@@ -29,7 +30,7 @@ const DEFAULT = Object.freeze({
     ['Jellyfin',8096,'media'],['Seerr',5055,'media'],['Radarr',7878,'media'],['Sonarr',8989,'media'],
     ['Prowlarr',9696,'media'],['Bazarr',6767,'media'],['qBittorrent',8090,'media'],
     ['Pi-hole',8888,'infrastructure'],['NPM',8181,'infrastructure'],['Recordstudio',18080,'infrastructure'],
-  ].map(([name,port,groupId])=>({id:guid(),name,groupId,url:`http://192.168.1.200:${port}`})),
+  ].map(([name,port,groupId])=>({id:guid(),name,groupId,url:`http://${NAS_BROWSER_HOST}:${port}`})),
   overview:['docker','vpn','alerts'],
   resourceSources:['jellyfin','radarr','sonarr','docker','volume1','volume2','smart','rss'],
   vpns:{media:{integrationId:'',expectedCountry:''},record:{integrationId:'',expectedCountry:'CH'}},

@@ -62,7 +62,7 @@ function choosePreset(){
   const preset=currentPreset();if(!preset)return;
   const dns={jellyfin:'jellyfin',radarr:'radarr',sonarr:'sonarr',seerr:'seerr',prowlarr:'prowlarr',bazarr:'bazarr',pihole:'pihole'};
   $('integration-name').value=preset.label;
-  $('integration-url').value=preset.port?`http://${dns[preset.type]||'192.168.1.200'}:${preset.port}`:'';
+  $('integration-url').value=preset.port?`http://${dns[preset.type]||window.location.hostname}:${preset.port}`:'';
   $('integration-endpoint').value=preset.endpoint;$('integration-field').value=preset.field;
   $('integration-auth').value=preset.auth;$('integration-header').value='X-Api-Key';$('integration-username').value='';$('integration-secret').value='';$('secret-hint').textContent='';syncAuth();
 }

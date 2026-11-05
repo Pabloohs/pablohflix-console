@@ -291,7 +291,7 @@ async function diagnosticStatus(snapshot){
     const v=snapshot.volumes?.[name];
     if(v)add(name,label,'ready',`${v.usedPercent}% occupés · ${v.method||'collecteur NAS'}`,[]);
     else add(name,label,'missing',name==='volume2'?'Point de mesure du Volume 2 absent.':'Point de mesure Volume 1 absent.',[
-      name==='volume2'?'Créer /volume2/pablohflix-probe puis monter ce dossier en lecture seule vers /app/volume2-probe dans le Compose.':'Vérifier que le volume persistant /app/data est bien monté et accessible.',
+      name==='volume2'?'Créer un dossier vide dédié au volume 2 puis monter ce dossier en lecture seule vers /app/volume2-probe dans le Compose.':'Vérifier que le volume persistant /app/data est bien monté et accessible.',
       'Alternative : activer le collecteur hôte pour récupérer les données df des volumes.'
     ]);
   }

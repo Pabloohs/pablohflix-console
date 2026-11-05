@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+// Change NAS_BROWSER_HOST only in the NAS-local .env (never commit its real IP).
+const NAS_BROWSER_HOST = (process.env.NAS_BROWSER_HOST || 'nas.local').trim();
 const MAX_CARDS = 32;
 const MAX_ROWS = 24;
 const MAX_TITLE = 70;
@@ -34,18 +36,18 @@ const isValidId = v => typeof v === 'string' && SHORT_ID.test(v);
 
 const row = (key, label, statusPath, suffix='') => ({id:key,label,enabled:true,sourceType:'status',path:statusPath,integrationId:'',endpoint:'',field:'',transform:'value',format:'auto',suffix});
 export const DEFAULT_CARDS = Object.freeze([
-  {id:'core-jellyfin',title:'JELLYFIN',icon:'▷',description:'STREAMING',url:'http://192.168.1.200:8096',enabled:true,span:1,rows:[
+  {id:'core-jellyfin',title:'JELLYFIN',icon:'▷',description:'STREAMING',url:`http://${NAS_BROWSER_HOST}:8096`,enabled:true,span:1,rows:[
     row('jelly-streams','Lectures en cours','jellyfin.streams'),
     row('jelly-transcodes','Transcodages QSV / autres','jellyfin.transcodes'),
     row('jelly-users','Utilisateurs actifs','jellyfin.users'),
   ]},
-  {id:'core-media-arr',title:'MEDIA-ARR',icon:'⚙',description:'AUTOMATISATION',url:'http://192.168.1.200:5055',enabled:true,span:1,rows:[
+  {id:'core-media-arr',title:'MEDIA-ARR',icon:'⚙',description:'AUTOMATISATION',url:`http://${NAS_BROWSER_HOST}:5055`,enabled:true,span:1,rows:[
     row('radarr-missing','Films en attente','radarr.missing'),
     row('sonarr-missing','Épisodes en attente','sonarr.missing'),
     row('arr-queue','File ARR (Radarr + Sonarr)','computed.arrQueue'),
     row('seerr-pending','Demandes Seerr','seerr.pending'),
   ]},
-  {id:'core-recordstudio',title:'RECORDSTUDIO',icon:'◉',description:'CAPTURE VIDÉO',url:'http://192.168.1.200:18080',enabled:true,span:1,rows:[
+  {id:'core-recordstudio',title:'RECORDSTUDIO',icon:'◉',description:'CAPTURE VIDÉO',url:`http://${NAS_BROWSER_HOST}:18080`,enabled:true,span:1,rows:[
     row('record-streams','Streams en cours','recordstudio.streams'),
     row('record-free','Stockage libre V2','volumes.volume2.freePercent','%'),
     row('record-country','VPN Suisse','vpnRecord.country'),
