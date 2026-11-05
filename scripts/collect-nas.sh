@@ -62,6 +62,33 @@ if [ $((NOW - LAST)) -ge 3600 ] && command -v lsblk >/dev/null 2>&1; then
   mv -f "$TMP/smart.last" "$BASE/smart.last"
 fi
 
+# Read-only NAS user/UID inventory, refreshed at most once every 5 minutes.
+# getent includes NSS users where available; fallback to /etc/passwd.
+# Only login|uid is retained, never password hash, GECOS, home or shell.
+LAST_USERS=$(cat "$BASE/users.last" 2>/dev/null || echo 0)
+case "$LAST_USERS" in ''|*[!0-9]*) LAST_USERS=0;; esac
+if [ "$LAST_USERS" -gt "$NOW" ]; then LAST_USERS=0; fi
+if [ $((NOW - LAST_USERS)) -ge 300 ] || [ ! -f "$BASE/users.psv" ]; then
+  if command -v getent >/dev/null 2>&1; then
+    getent passwd > "$TMP/.passwd" 2>/dev/null || :
+  fi
+  if [ ! -s "$TMP/.passwd" ] && [ -r /etc/passwd ]; then
+    cp /etc/passwd "$TMP/.passwd"
+  fi
+  if [ -f "$TMP/.passwd" ]; then
+    LC_ALL=C awk -F: '
+      NF>=4 && $1 ~ /^[A-Za-z_][A-Za-z0-9_.-]*[$]?$/ && $3 ~ /^[0-9]+$/ {
+        print $1 "|" $3
+      }
+    ' "$TMP/.passwd" | sort -t '|' -k2,2n -k1,1 | head -n 512 > "$TMP/users.psv"
+    chmod 644 "$TMP/users.psv"
+    mv -f "$TMP/users.psv" "$BASE/users.psv"
+    printf '%s\n' "$NOW" > "$TMP/users.last"
+    chmod 644 "$TMP/users.last"
+    mv -f "$TMP/users.last" "$BASE/users.last"
+  fi
+fi
+
 date -Is > "$TMP/updated_at"
 chmod 644 "$TMP/updated_at"
 mv -f "$TMP/updated_at" "$BASE/updated_at"

@@ -104,6 +104,36 @@ function parseSmartDisks(raw) {
   }).filter(Boolean);
 }
 
+// UGOS/Linux NSS accounts are collected on the host, never from Docker's /etc/passwd.
+// Only login and numeric UID are exported; never export shadow, GECOS, home or shell.
+function parseNasUsers(raw) {
+  if (typeof raw !== 'string' || raw.length > 80_000) return [];
+  const seen = new Set(), accounts = [];
+  for (const line of raw.split(/\r?\n/)) {
+    const [name, uidText, extra] = line.split('|');
+    if (extra !== undefined || !/^[A-Za-z_][A-Za-z0-9_.-]{0,63}\$?$/.test(name || '') ||
+        !/^\d{1,10}$/.test(uidText || '')) continue;
+    const uid = Number(uidText);
+    if (!Number.isSafeInteger(uid) || uid < 0 || uid > 4_294_967_295 || seen.has(name)) continue;
+    seen.add(name);
+    accounts.push({name,uid,system:uid < 1000 || uid >= 60000 || name === 'nobody'});
+    if (accounts.length >= 512) break;
+  }
+  return accounts.sort((a,b) => a.uid - b.uid || a.name.localeCompare(b.name));
+}
+function readNasUsers() {
+  const raw = localFile('users.psv');
+  const lastText = (localFile('users.last') || '').trim();
+  const last = /^\d{10,11}$/.test(lastText) ? Number(lastText) * 1000 : NaN;
+  const valid = Number.isFinite(last) && last <= Date.now() + 60_000 &&
+    Date.now() - last < 15 * 60_000;
+  if (raw === null || !valid) return {
+    ok:false,accounts:[],updatedAt:null,
+    reason:'Inventaire des comptes absent ou périmé : mettre à jour et relancer le collecteur UGOS.'
+  };
+  return {ok:true,accounts:parseNasUsers(raw),updatedAt:new Date(last).toISOString()};
+}
+
 function collectSnapshot() {
   const raw=localFile('docker.psv');
   const probeAt=(localFile('updated_at')||'').trim()||null;
@@ -380,6 +410,7 @@ const server=http.createServer(async(req,res)=>{
       // A failure elsewhere must never hide independently available articles.
       if(pathname==='/api/rss'&&req.method==='GET')return json(res,200,await feedReader.read());
       if(pathname==='/api/status'&&req.method==='GET')return json(res,200,await status());
+      if(pathname==='/api/system/users'&&req.method==='GET')return json(res,200,readNasUsers());
       if(pathname==='/api/experience'&&req.method==='GET')return json(res,200,preferences.read());
       if(pathname==='/api/overview/options'&&req.method==='GET')return json(res,200,{options:OVERVIEW_METRICS});
       if(pathname==='/api/setup/diagnostics'&&req.method==='GET')return json(res,200,await diagnosticStatus(await status()));
@@ -468,4 +499,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(err){console.error('[PabloHFlix] Requête en échec',pathname,err?.message||err);return json(res,500,{error:'Erreur interne — consulter les logs du conteneur et Settings → Sources'});}
 });
 if(process.argv[1]===fileURLToPath(import.meta.url)) server.listen(PORT,'0.0.0.0',()=>console.log(`PabloHFlix Console listening on ${PORT}`));
-export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml,parseSmartDisks,readVpnFromIntegration };
+export { server,collectSnapshot,collectHost,status,safeEqual,decodeXml,parseSmartDisks,parseNasUsers,readNasUsers,readVpnFromIntegration };
