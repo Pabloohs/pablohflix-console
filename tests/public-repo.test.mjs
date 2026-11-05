@@ -12,7 +12,7 @@ const forbiddenPatterns=[
   {name:'Deployment-specific filesystem directory',re:/\/volume1\/docker\/(?:nas-dashboard|pablohflix-native-preview|recordstudio)\b/g},
   {name:'Deployment-specific public domain',re:/pablohflix\.duckdns\.(?:org|com)/gi},
   {name:'Deployment hostname',re:/DXP4800PRO-[A-F0-9]{4}/gi},
-  {name:'Hard-coded runtime UID/GID',re:/\b1005:100\b/g},
+  {name:'Hard-coded runtime UID/GID',re:/\b10(?:05):100\b/g},
   {name:'GitHub token pattern',re:/\b(?:gh[pousr]_[A-Za-z0-9]{24,}|github_pat_[A-Za-z0-9_]{40,})\b/g},
   {name:'Possible OpenAI key pattern',re:/\bsk-[A-Za-z0-9_-]{24,}\b/g},
   {name:'Private key content',re:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g}
