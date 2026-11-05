@@ -71,6 +71,21 @@ Nous refusons volontairement de monter `docker.sock` dans le dashboard : même e
 
 Sans ce collecteur, les lignes Docker/SMART restent « À configurer » et non « 0 ». Le stockage peut néanmoins fonctionner via `statfs` avec les montages dédiés.
 
+## Inventaire des utilisateurs NAS (UID)
+
+Le panneau **SYSTÈME → UTILISATEURS NAS** affiche uniquement le nom de connexion et l'UID Unix des comptes retournés par NSS (`getent passwd`), avec repli sur `/etc/passwd`. L'inventaire est limité à 512 entrées. Les comptes techniques (UID inférieur à 1000 ou supérieur ou égal à 60000) sont masqués par défaut et peuvent être affichés dans l'interface ; ce classement par plage d'UID est **indicatif** et ne constitue pas une preuve du type d'un compte UGOS.
+
+Le collecteur hôte actualise `users.psv` (format `login|uid`) et `users.last` toutes les **5 minutes** au maximum. Il ne lit jamais `/etc/shadow` et ne copie pas les champs GECOS, mot de passe, répertoire personnel ni shell. Le fichier brut temporaire NSS est créé dans un dossier privé et supprimé après la collecte. Le conteneur reçoit les fichiers déjà expurgés via son montage `/app/metrics:ro`. L'API privée `GET /api/system/users` est protégée par la session du dashboard et n'est pas incluse dans `/api/status`.
+
+**Installation** : mettre à jour le collecteur à partir de `scripts/collect-nas.sh`, puis exécuter sur le NAS (remplacer les chemins par vos chemins *locaux* non publiés) :
+
+```bash
+sudo env PABLOHFLIX_METRICS_DIR=/chemin/local/metrics sh /chemin/local/collect-nas.sh
+sudo cat /chemin/local/metrics/users.psv
+```
+
+Si la collecte est planifiée via systemd ou UGOS, ajouter **sur l'hôte** la variable `PABLOHFLIX_METRICS_DIR` à la tâche pour les prochaines exécutions. Ne pas remplacer la valeur de production par un chemin d'exemple GitHub. Le panneau ne montre pas d'inventaire « fictif » en cas de fichier absent ou périmé : il demande d'actualiser le collecteur.
+
 ## Architecture / API
 
 - `server.mjs` : API de statut, login, diagnostics, liens, RSS et bandeau.
