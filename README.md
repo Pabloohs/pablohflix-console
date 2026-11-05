@@ -1,6 +1,6 @@
-# PabloHFlix Console — v0.4, configuration guidée
+# PabloHFlix Console — Guide de configuration
 
-Dashboard privé UGREEN DXP4800 Pro / UGOS Pro, interface originale **PabloHFlix V1**, sans runtime Homarr. Cette version corrige la difficulté majeure signalée en v0.3 : **les indicateurs indisponibles doivent expliquer comment les activer**.
+Dashboard privé NAS sous UGOS Pro, interface originale **PabloHFlix V1**, sans runtime Homarr. Cette version corrige la difficulté majeure signalée en v0.3 : **les indicateurs indisponibles doivent expliquer comment les activer**.
 
 ## Quoi de neuf en v0.4
 
@@ -17,7 +17,7 @@ Dashboard privé UGREEN DXP4800 Pro / UGOS Pro, interface originale **PabloHFlix
 
 ## Après déploiement : parcours conseillé
 
-1. Ouvrir `http://192.168.1.200:3030/settings` → **Sources & configuration**. Lire les états réels avant toute modification réseau.
+1. Ouvrir `http://192.168.56.10:3030/settings` → **Sources & configuration**. Lire les états réels avant toute modification réseau.
 2. **Stockage** : le Volume 1 doit apparaître automatiquement si `/app/data` est monté sur le Volume 1. Pour le Volume 2, suivre le montage du petit répertoire dédié ci-dessous.
 3. **Docker / SMART** : activer le collecteur UGOS si l'état est « À configurer ». SMART ne peut pas être obtenu sans permissions depuis un conteneur applicatif non privilégié.
 4. **Réseau & VPN** : connecter le service Gluetun via Intégrations API, puis attribuer la bonne intégration à Media / Recordstudio dans Sources & configuration. En cas de panne, utiliser « Tester » dans Intégrations API.
@@ -25,17 +25,17 @@ Dashboard privé UGREEN DXP4800 Pro / UGOS Pro, interface originale **PabloHFlix
 6. **Accès rapides** : remplacer les URLs d'exemple par les vraies adresses de tes applications et créer des groupes.
 7. **Bandeau / État des sources** : choisir les indicateurs à voir en haut, les sources et leur ordre. Ces réglages restent persistants.
 
-## Mise à jour Docker UGOS (UID 1005 / GID 100)
+## Mise à jour Docker UGOS (adapter UID/GID au NAS)
 
-Image : `ghcr.io/pabloohs/pablohflix-console:native-preview`. Projet `pablohflix-native-preview`, port **3030**, sans modifier V1 sur 3010, ni Homarr V2 sur 3020. Conserver exactement le même `.env`, notamment `DASHBOARD_SESSION_SECRET`, et le volume persistant `data`.
+Les chemins, IP, UID/GID et noms de réseaux présentés ci-dessous sont **fictifs** et doivent être adaptés uniquement sur votre NAS, dans une configuration locale jamais publiée. Image : `ghcr.io/pabloohs/pablohflix-console:native-preview`. Projet `pablohflix-native-preview`, port **3030**, sans modifier V1 sur 3010, ni Homarr V2 sur 3020. Conserver exactement le même `.env`, notamment `DASHBOARD_SESSION_SECRET`, et le volume persistant `data`.
 
 ```bash
 # Sauvegarde avant la mise à jour (le contenu contient des secrets chiffrés)
-sudo tar -czf /volume1/docker/pablohflix-native-preview-backup-$(date +%Y%m%d).tgz -C /volume1/docker/pablohflix-native-preview data .env
+sudo tar -czf /volume1/docker/console-example-backup-$(date +%Y%m%d).tgz -C /volume1/docker/console-example data .env
 # Dossier dédié pour lire l'espace du Volume 2, sans exposer les enregistrements
-sudo mkdir -p /volume2/pablohflix-probe
-# UID propriétaire du conteneur
-sudo chown -R 1005:100 /volume1/docker/pablohflix-native-preview/data
+sudo mkdir -p /volume2/empty-monitoring-probe
+# UID propriétaire du conteneur (EXEMPLE : remplacer par l’UID/GID de votre NAS)
+sudo chown -R 1000:1000 /volume1/docker/console-example/data
 # Télécharger l'image corrigée
 sudo docker pull ghcr.io/pabloohs/pablohflix-console:native-preview
 ```
@@ -44,9 +44,9 @@ Dans le Compose UGOS, conserver les montages existants et ajouter uniquement :
 
 ```yaml
 volumes:
-  - /volume1/docker/pablohflix-native-preview/data:/app/data
-  - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
-  - /volume2/pablohflix-probe:/app/volume2-probe:ro
+  - /volume1/docker/console-example/data:/app/data
+  - /volume1/docker/monitoring-example/metrics:/app/metrics:ro
+  - /volume2/empty-monitoring-probe:/app/volume2-probe:ro
 ```
 
 **Note** : ce fragment `volumes:` fait partie du service `console`, pas du niveau racine. Voir [`compose.preview.yaml`](compose.preview.yaml) pour le Compose complet. Les réseaux `media_services` et `jellyfin_default` restent **à vérifier** sur ton NAS avec `docker network ls` : ne les crée pas à l'aveugle. Après `docker pull`, **recréer** le conteneur via UGOS Docker, sans supprimer `data` ni `.env` ; un simple redémarrage conserve l'ancienne image.
@@ -56,17 +56,17 @@ Vérifier :
 ```bash
 sudo docker ps --filter name=pablohflix-native-preview
 sudo docker logs --tail 80 pablohflix-native-preview
-curl -f http://192.168.1.200:3030/healthz
+curl -f http://192.168.56.10:3030/healthz
 ```
 
 ## Pourquoi Docker et SMART nécessitent un collecteur hôte
 
 Nous refusons volontairement de monter `docker.sock` dans le dashboard : même en lecture seule, ce socket peut donner des privilèges dangereux. Les informations Docker / SMART doivent donc venir du **script local, en lecture seule** [`scripts/collect-nas.sh`](scripts/collect-nas.sh) :
 
-1. Télécharger ou copier le script depuis ce dépôt après l'avoir examiné, puis le placer par exemple dans `/volume1/docker/pablohflix-native-preview/collect-nas.sh`.
-2. Exécuter une fois en SSH avec les droits nécessaires : `sudo sh /volume1/docker/pablohflix-native-preview/collect-nas.sh`.
-3. Vérifier le dossier `/volume1/docker/nas-dashboard/metrics` et en particulier `updated_at`, `docker.psv`, `volumes.df`, `disks.psv`.
-4. Dans le planificateur de tâches UGOS, programmer l'exécution **chaque minute**. Le SMART est interrogé **au plus une fois par heure**, et `smartctl` doit être disponible sur l'hôte pour obtenir la santé/température.
+1. Télécharger ou copier le script depuis ce dépôt après l'avoir examiné, puis le placer par exemple dans `/volume1/docker/console-example/collect-nas.sh`.
+2. Définir le chemin réel de sortie **uniquement sur le NAS** et exécuter : `sudo env PABLOHFLIX_METRICS_DIR=/chemin/local/du/dossier/metrics sh /chemin/local/collect-nas.sh`.
+3. Vérifier le dossier `/volume1/docker/monitoring-example/metrics` et en particulier `updated_at`, `docker.psv`, `volumes.df`, `disks.psv`.
+4. Dans le planificateur de tâches UGOS, renseigner `PABLOHFLIX_METRICS_DIR` avec le chemin réel puis programmer l'exécution **chaque minute**. Le SMART est interrogé **au plus une fois par heure**, et `smartctl` doit être disponible sur l'hôte pour obtenir la santé/température.
 5. Settings → Sources indique si le collecteur est absent, périmé ou actif. Le dossier de métriques est monté **en lecture seule** dans le conteneur.
 
 Sans ce collecteur, les lignes Docker/SMART restent « À configurer » et non « 0 ». Le stockage peut néanmoins fonctionner via `statfs` avec les montages dédiés.
@@ -110,3 +110,9 @@ node --test tests/*.test.mjs
 ## Correctif RSS indépendant du statut NAS
 
 Depuis le correctif du 4 novembre 2026, la page d'accueil lit les articles via `GET /api/rss` (session requise) indépendamment de `GET /api/status`. L'erreur du bandeau « Statut NAS indisponible » n'efface donc plus des articles déjà disponibles. Pour diagnostiquer une panne globale distincte, consulter `sudo docker logs --tail 100 pablohflix-native-preview` puis Settings → Sources. Les flux restent soumis au cache et aux contrôles HTTPS/DNS du lecteur RSS existant.
+
+## Publication d’un dépôt public
+
+Ne jamais pousser `.env`, fichiers `data/*.json`, exports du dashboard, identifiants VPN, inventaires Docker/SMART ou journaux. Les IP et répertoires illustrés ici sont fictifs. Conserver les valeurs réelles uniquement dans la configuration de déploiement du NAS. `NAS_BROWSER_HOST` se règle dans le `.env` local pour initialiser les liens du dashboard ; les réglages déjà sauvegardés dans `data/` sont préservés.
+
+**Important :** le nettoyage du dernier commit ne supprime pas les anciennes données de l’historique Git ou des branches d’archive. Pour une suppression définitive, traiter l’historique, les forks et les caches séparément ; changer tout secret qui a pu être exposé.

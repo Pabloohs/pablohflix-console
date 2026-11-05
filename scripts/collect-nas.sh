@@ -1,9 +1,9 @@
 #!/bin/sh
 # PabloHFlix Console : inventaire sanitaire local, en lecture seule.
-# Écrit UNIQUEMENT des métriques expurgées dans /volume1/docker/nas-dashboard/metrics.
+# Écrit UNIQUEMENT des métriques expurgées dans le dossier configuré localement.
 # Ne modifie pas les règles iptables, les conteneurs, les volumes, ni SMART.
 set -eu
-BASE=/volume1/docker/nas-dashboard/metrics
+BASE="${PABLOHFLIX_METRICS_DIR:?Définir PABLOHFLIX_METRICS_DIR avec le chemin hôte réel de sortie SMART/Docker}"
 umask 022
 mkdir -p "$BASE"
 TMP="$(mktemp -d "$BASE/.probe.XXXXXX")"

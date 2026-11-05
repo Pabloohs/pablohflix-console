@@ -1,3 +1,4 @@
+# Exemple historique uniquement ; NE PAS utiliser comme Compose de production sans adaptation.
 # Projet UGOS Docker : nas-dashboard (correctif 0.1.1 / lecture directe du .env)
 # Ne modifie ni media-arr, ni recordstudio, ni les règles réseau existantes.
 services:
@@ -13,7 +14,7 @@ services:
     # Chemin absolu : UGOS peut copier le Compose dans son repertoire de projets.
     # A ne pas confondre avec l'interpolation ${VARIABLE} faite AVANT le demarrage.
     env_file:
-      - /volume1/docker/nas-dashboard/.env
+      - /volume1/docker/console-v1-example/.env
     environment:
       TZ: Europe/Paris
       PORT: "3000"
@@ -25,11 +26,11 @@ services:
       VPN_RECORD_EXPECTED_COUNTRY: "CH"
       NEWS_RSS_URL: "https://www.cert.ssi.gouv.fr/feed/"
     ports:
-      - "192.168.1.200:3010:3000"
+      - "127.0.0.1:3010:3000"
     volumes:
-      - /volume1/docker/nas-dashboard/server.mjs:/app/server.mjs:ro
-      - /volume1/docker/nas-dashboard/public:/app/public:ro
-      - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+      - /volume1/docker/console-v1-example/server.mjs:/app/server.mjs:ro
+      - /volume1/docker/console-v1-example/public:/app/public:ro
+      - /volume1/docker/console-v1-example/metrics:/app/metrics:ro
     networks:
       - console_default
       - media_services

@@ -1,14 +1,15 @@
-# Exemple d'instance TEST sur UGOS Pro (ne remplace pas la V1 :3010 ni Homarr V2 :3020).
+# EXEMPLE PUBLIC NON DÉPLOYABLE TEL QUEL : remplacer localement les IP, chemins, UID/GID et réseaux.
+# Ne jamais remplacer le Compose de production sans vérifier ses montages et ses secrets.
 # Déployer uniquement après avoir créé le dossier et les secrets indiqués dans README.
 name: pablohflix-native-preview
 services:
   console:
     image: ghcr.io/pabloohs/pablohflix-console:native-preview
     container_name: pablohflix-native-preview
-    user: "1005:100" # UID/GID confirmé pour PabloHFlix sur ce NAS
+    user: "1000:1000" # EXEMPLE : définir votre UID/GID réel localement
     restart: unless-stopped
     env_file:
-      - /volume1/docker/pablohflix-native-preview/.env
+      - /volume1/docker/console-example/.env
     environment:
       TZ: Europe/Paris
       PORT: "3000"
@@ -16,13 +17,14 @@ services:
       METRICS_DIR: /app/metrics
       HOST_VOLUME1_PATH: /app/data
       HOST_VOLUME2_PATH: /app/volume2-probe
+    # Accès local uniquement par défaut ; adapter sur le NAS pour LAN/Tailscale.
     ports:
-      - "192.168.1.200:3030:3000"
+      - "127.0.0.1:3030:3000"
     volumes:
-      - /volume1/docker/pablohflix-native-preview/data:/app/data
-      - /volume1/docker/nas-dashboard/metrics:/app/metrics:ro
+      - /volume1/docker/console-example/data:/app/data
+      - /volume1/docker/monitoring-example/metrics:/app/metrics:ro
       # Mount an empty dedicated folder; never mount personal/media contents for disk statistics.
-      - /volume2/pablohflix-probe:/app/volume2-probe:ro
+      - /volume2/empty-monitoring-probe:/app/volume2-probe:ro
     networks:
       - private_console
       - media_services

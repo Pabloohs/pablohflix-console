@@ -7,3 +7,23 @@
 *.log
 .DS_Store
 node_modules/
+
+# Secrets et données locales (ne jamais ajouter de vrais fichiers de configuration)
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+*.tgz
+*.tar.gz
+*.bak
+*.backup
+*.log.*
+*.psv
+*.df
+secrets/
+**/secrets/
+config.local.*
+.envrc
