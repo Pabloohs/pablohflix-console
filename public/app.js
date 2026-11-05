@@ -16,6 +16,61 @@
   const login=$('login-form');
   if(login){login.addEventListener('submit',async e=>{e.preventDefault();txt('login-error','');const form=new FormData(login);try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:form.get('username'),password:form.get('password')})});const data=await r.json();if(!r.ok)throw Error(data.error||'Connexion impossible');location.replace('/');}catch(err){txt('login-error',err.message);}});return;}
   const logout=$('logout');logout?.addEventListener('click',async()=>{await fetch('/api/logout',{method:'POST'});location.assign('/login');});
+  // Dedicated session-protected endpoint: avoid including NAS account names in /api/status.
+  let userInventory=null;
+  let showTechnicalUsers=localStorage.getItem('pablo-show-technical-users')==='1';
+  const usersToggle=$('nas-users-technical-toggle');
+  function renderUsers(snapshot){
+    const list=$('nas-users-list');
+    if(!list)return;
+    list.replaceChildren();
+    usersToggle?.setAttribute('aria-pressed',String(showTechnicalUsers));
+    if(usersToggle)usersToggle.textContent=showTechnicalUsers?'Masquer comptes techniques':'Afficher comptes techniques';
+    const available=Array.isArray(snapshot?.accounts)?snapshot.accounts:[];
+    const regular=available.filter(account=>!account.system);
+    const visible=showTechnicalUsers?available:regular;
+    txt('nas-users-count',snapshot?.ok?String(visible.length):'—');
+    if(!snapshot?.ok){
+      const item=document.createElement('p');item.className='muted';
+      item.textContent=snapshot?.reason||'Métrique indisponible : activer le collecteur de comptes UGOS.';
+      list.append(item);txt('nas-users-updated','Collecte hôte à configurer');return;
+    }
+    if(visible.length===0){
+      const item=document.createElement('p');item.className='muted';
+      item.textContent=showTechnicalUsers?'Aucun compte détecté.':'Aucun compte utilisateur détecté. Affiche les comptes techniques pour vérifier.';
+      list.append(item);
+    }
+    for(const account of visible){
+      const row=document.createElement('div');row.className='nas-user-row';
+      const name=document.createElement('span');name.textContent=account.name;
+      const uid=document.createElement('b');uid.textContent=String(account.uid);
+      row.append(name,uid);list.append(row);
+    }
+    txt('nas-users-updated',snapshot.updatedAt
+      ?'Inventaire UGOS · '+new Date(snapshot.updatedAt).toLocaleString('fr-FR')
+      :'Inventaire UGOS');
+  }
+  usersToggle?.addEventListener('click',()=>{
+    showTechnicalUsers=!showTechnicalUsers;
+    localStorage.setItem('pablo-show-technical-users',showTechnicalUsers?'1':'0');
+    renderUsers(userInventory);
+  });
+  async function refreshNasUsers(){
+    if(!$('nas-users-panel'))return;
+    try{
+      const response=await fetch('/api/system/users',{cache:'no-store'});
+      if(response.status===401){location.replace('/login');return;}
+      if(!response.ok)throw Error('Impossible de charger les comptes NAS');
+      userInventory=await response.json();
+      renderUsers(userInventory);
+    }catch(err){
+      userInventory={ok:false,reason:'Inventaire des comptes indisponible · vérifier le collecteur.'};
+      renderUsers(userInventory);
+    }
+  }
+  refreshNasUsers();
+  setInterval(refreshNasUsers,300000);
+
   function render(data){
     const sys=data.system||{},docker=data.docker||{},vol=data.volumes||{},disks=data.disks||[];
     txt('cpu',val(sys.cpu,' %'));txt('ram',val(sys.ram,' %'));txt('uptime',typeof sys.uptimeSeconds==='number'?`${Math.floor(sys.uptimeSeconds/86400)} j ${Math.floor(sys.uptimeSeconds%86400/3600)} h`:'—');pct('cpu-bar',sys.cpu);pct('ram-bar',sys.ram);

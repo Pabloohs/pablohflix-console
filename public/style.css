@@ -48,3 +48,24 @@
 .source-item>span:last-child{font-size:10px;text-align:right;font-weight:600}
 .source-ready{color:var(--ok)}.source-error{color:var(--danger)}.source-missing,.source-partial,.source-stale{color:var(--accent)}
 @media(max-width:740px){.top-metric{padding:6px;gap:3px;font-size:10px}.rss-group-tabs{flex-wrap:nowrap;overflow-x:auto}.panel-action{font-size:9px}}
+
+
+/* Compact UGOS host user/UID inventory inside the System panel. */
+.nas-users{margin-top:18px;border-top:1px solid var(--rail);padding-top:12px}
+.nas-users summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:800;letter-spacing:.02em;list-style:none}
+.nas-users summary::-webkit-details-marker{display:none}
+.nas-users summary::before{content:'▸';color:var(--accent);margin-right:2px}
+.nas-users[open] summary::before{content:'▾'}
+.nas-users summary>span{flex:1}
+.nas-users summary small{color:var(--muted);font-size:10px;font-weight:500}
+.nas-users summary b{color:var(--accent);font-size:12px;font-variant-numeric:tabular-nums}
+.nas-users-content{margin-top:10px}
+#nas-users-technical-toggle{border:1px solid var(--rail);border-radius:5px;padding:6px 9px;color:var(--muted);background:transparent;font-size:10px;margin-bottom:8px}
+#nas-users-technical-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.nas-users-list{max-height:170px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rail) transparent}
+.nas-user-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--rail);padding:7px 3px;font-size:12px}
+.nas-user-row:last-child{border-bottom:0}
+.nas-user-row span{min-width:0;overflow-wrap:anywhere}
+.nas-user-row b{color:var(--ok);font-variant-numeric:tabular-nums}
+.nas-users-updated{display:block;color:var(--muted);font-size:10px;margin-top:8px}
+@media(max-width:740px){.nas-users-list{max-height:150px}}
