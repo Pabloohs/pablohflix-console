@@ -18,7 +18,7 @@ test('sources RSS, raccourcis, bandeau et VPN sauvegardés et validés',()=>{
     config.feedGroups.push({id:'hardware',name:'Hardware & NAS'});
     config.feeds.push({id:'feed-hardware',groupId:'hardware',name:'Actu NAS',url:'https://example.com/feed.xml',enabled:true});
     config.quickGroups.push({id:'homelab',name:'Homelab'});
-    config.quickLinks.push({id:'my-app',groupId:'homelab',name:'Mon app',url:'http://192.168.1.200:9090/'});
+    config.quickLinks.push({id:'my-app',groupId:'homelab',name:'Mon app',url:'http://192.168.56.10:9090/'});
     config.overview=['storage','docker','rss'];
     config.vpns.record.expectedCountry='CH';
     config.resourceSources=['api','volume1','rss'];
@@ -60,7 +60,7 @@ test('RSS : cache, erreurs explicites et conservation des dernières entrées',a
 
 test('RSS HTTP client refuse les hôtes privés avant ouverture de connexion',async()=>{
   await assert.rejects(downloadFeed('https://127.0.0.1/rss.xml'),/privé|autorisé/i);
-  await assert.rejects(downloadFeed('https://192.168.1.200/rss.xml'),/privé|autorisé/i);
+  await assert.rejects(downloadFeed('https://192.168.56.10/rss.xml'),/privé|autorisé/i);
 });
 
 

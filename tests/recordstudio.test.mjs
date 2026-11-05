@@ -43,14 +43,14 @@ test('cbrecorder : HTTP Basic chiffré au repos, carte Stream en cours via statu
   try{
     const integrations=createIntegrationStore({dir,secret:'secret-test-sufficiently-long-to-encrypt-recordstudio',fetchImpl});
     const id=integrations.create({
-      type:'recordstudio',name:'Recordstudio API',url:'http://172.23.0.2:18080',
+      type:'recordstudio',name:'Recordstudio API',url:'http://172.28.99.10:18080',
       username:'admin',auth:'basic',secret:'RECORDSTUDIO-TEST-ONLY-SECRET',endpoint:'/api/state'
     }).id;
     const checked=await integrations.test(id);
     assert.equal(checked.ok,true);
     assert.equal(checked.metric,2);
     assert.equal(calls[0].headers.Authorization,'Basic '+Buffer.from('admin:RECORDSTUDIO-TEST-ONLY-SECRET').toString('base64'));
-    assert.equal(calls[0].url,'http://172.23.0.2:18080/api/state');
+    assert.equal(calls[0].url,'http://172.28.99.10:18080/api/state');
     const dashboard=createDashboardStore({dir,integrations});
     const rows=(await dashboard.readData({recordstudio:{ok:true,streams:2}})).cards.find(c=>c.id==='core-recordstudio').rows;
     assert.equal(rows.find(r=>r.id==='record-streams').value,2);

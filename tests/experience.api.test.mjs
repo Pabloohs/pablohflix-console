@@ -23,7 +23,7 @@ test('API : session, modification des groupes, diagnostics et sources protégés
     const headers={cookie,'Content-Type':'application/json'};
     r=await req('/api/experience',{headers});assert.equal(r.status,200);const config=await r.json();
     config.quickGroups.push({id:'mon-groupe',name:'Nouveau groupe'});
-    config.quickLinks.push({id:'mon-lien',name:'Ma Cave',groupId:'mon-groupe',url:'http://192.168.1.200:3010'});
+    config.quickLinks.push({id:'mon-lien',name:'Ma Cave',groupId:'mon-groupe',url:'http://192.168.56.10:3010'});
     r=await req('/api/experience',{method:'POST',headers,body:JSON.stringify(config)});assert.equal(r.status,200);
     const saved=await r.json();assert.equal(saved.quickLinks.at(-1).name,'Ma Cave');
     // RSS must be available via its own endpoint, regardless of the media/NAS status.

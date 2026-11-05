@@ -27,7 +27,7 @@ test('éditeur: multi-endpoints, compteurs Jellyfin, transformation, ordre et pe
  };
  try {
   const integrations=createIntegrationStore({dir,secret,fetchImpl});
-  const jelly=integrations.create({name:'Jellyfin Cinema',type:'jellyfin',url:'http://192.168.1.200:8096',secret:'API-KEY-123'});
+  const jelly=integrations.create({name:'Jellyfin Cinema',type:'jellyfin',url:'http://192.168.56.10:8096',secret:'API-KEY-123'});
   const dashboard=createDashboardStore({dir,integrations});
   assert.equal(dashboard.list().cards.length,DEFAULT_CARDS.length);
   const cardId='core-jellyfin';
@@ -64,7 +64,7 @@ test('cartes: créer, cacher, dupliquer, déplacer, exporter/importer et réinit
  try{
   const i=createIntegrationStore({dir,secret,fetchImpl:async()=>({status:200,ok:true,text:async()=>'{"value":1}'})});
   const d=createDashboardStore({dir,integrations:i});
-  const card=d.upsertCard({title:'Réseau',icon:'◇',span:2,url:'http://192.168.1.200:8888'});
+  const card=d.upsertCard({title:'Réseau',icon:'◇',span:2,url:'http://192.168.56.10:8888'});
   d.upsertCard({id:card.id,title:'Réseau',enabled:false});
   assert.equal(d.list().cards.at(-1).enabled,false);
   assert.equal(d.readData?true:false,true);
@@ -89,7 +89,7 @@ test('migration v0.2: conserve les widgets API comme cartes sans exposer les sec
  const dir=mk();
  try{
   const i=createIntegrationStore({dir,secret,fetchImpl:async()=>({status:200,ok:true,text:async()=>'{"count":5}'})});
-  const app=i.create({name:'App legacy',type:'custom',url:'http://192.168.1.200:7777',auth:'header',secret:'OLD-SECRET',headerName:'X-Key',endpoint:'/api',field:'count'});
+  const app=i.create({name:'App legacy',type:'custom',url:'http://192.168.56.10:7777',auth:'header',secret:'OLD-SECRET',headerName:'X-Key',endpoint:'/api',field:'count'});
   i.upsertWidget({title:'Ancien widget',integrationId:app.id,field:'count'});
   const d=createDashboardStore({dir,integrations:i});
   assert.equal(d.list().cards.length,4);
